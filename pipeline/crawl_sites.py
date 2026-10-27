@@ -35,7 +35,8 @@ OUTPUT = Path("data/staging/site_checks.parquet")
 CONCURRENCY = 100
 RETRY_CONCURRENCY = 20
 RETRY_REASONS = {"timeout", "connection"}
-TIMEOUT = httpx.Timeout(10.0, connect=8.0)
+# Χωρίς όριο αναμονής για ελεύθερη σύνδεση: τον ρυθμό τον ορίζει το semaphore.
+TIMEOUT = httpx.Timeout(10.0, connect=8.0, pool=None)
 MAX_BYTES = 1_500_000
 # Κάθε site ξαναελέγχεται αφού περάσουν τόσες μέρες.
 RECHECK_DAYS = 30
@@ -183,7 +184,7 @@ async def check_site(clients: dict[str, httpx.AsyncClient], website: str) -> Che
 
 
 async def crawl(websites: list[str], concurrency: int = CONCURRENCY) -> list[Check]:
-    limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=0)
+    limits = httpx.Limits(max_connections=None, max_keepalive_connections=0)
     common = dict(
         timeout=TIMEOUT,
         follow_redirects=True,
