@@ -1,0 +1,44 @@
+name: Data pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Overture release (κενό = το τελευταίο)"
+        required: false
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Resolve Overture release
+        id: release
+        run: |
+          if [ -n "${{ inputs.release }}" ]; then
+            echo "value=${{ inputs.release }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$(curl -s https://stac.overturemaps.org/catalog.json | jq -r .latest)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract places
+        run: uv run python pipeline/extract_places.py --release ${{ steps.release.outputs.value }}
+
+      - name: Extract divisions
+        run: uv run python pipeline/extract_divisions.py --release ${{ steps.release.outputs.value }}
+
+      - name: Assign region, municipality and locality
+        run: uv run python pipeline/assign_admin.py --release ${{ steps.release.outputs.value }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: places-admin-${{ steps.release.outputs.value }}
+          path: data/staging/*.parquet
+          retention-days: 14
