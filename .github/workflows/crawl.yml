@@ -1,0 +1,48 @@
+name: Website crawl
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: "Δείγμα N sites για δοκιμή (κενό = όσα δεν ελέγχθηκαν τις τελευταίες 30 μέρες)"
+        required: false
+      save:
+        description: "Αποθήκευση στη βάση"
+        type: boolean
+        default: true
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Crawl websites
+        run: |
+          args="--shard ${{ matrix.shard }}/4"
+          if [ -n "${{ inputs.sample }}" ]; then args="$args --sample ${{ inputs.sample }}"; fi
+          if [ "${{ inputs.save }}" != "true" ]; then args="$args --no-save"; fi
+          uv run python -W ignore pipeline/crawl_sites.py $args
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-checks-${{ matrix.shard }}
+          path: data/staging/site_checks.parquet
+          if-no-files-found: ignore
+          retention-days: 14
