@@ -3,6 +3,8 @@
 Γράφει δύο αρχεία στο data/raw:
     counties_gr_<release>.parquet    332 πολύγωνα δήμων, με την περιφέρεια του καθενός
     localities_gr_<release>.parquet  σημεία οικισμών (πόλη, κωμόπολη, χωριό, οικισμός)
+                                     και macrohoods (οι δήμοι-προάστια της Αττικής,
+                                     π.χ. Χαλάνδρι, που δεν έχουν σημείο locality)
 
 Χρήση:
     uv run python pipeline/extract_divisions.py [--release 2026-10-21.0]
@@ -36,7 +38,7 @@ def extract(release: str) -> tuple[Path, Path]:
         CREATE TABLE division_points AS
         SELECT id, names.primary AS name, subtype, class, population, hierarchies, geometry
         FROM read_parquet('{points}', hive_partitioning=1)
-        WHERE country = 'GR' AND subtype IN ('county', 'locality')
+        WHERE country = 'GR' AND subtype IN ('county', 'locality', 'macrohood')
     """)
 
     # Η περιφέρεια κάθε δήμου βγαίνει από την ιεραρχία του σημείου του δήμου.
@@ -58,13 +60,13 @@ def extract(release: str) -> tuple[Path, Path]:
             SELECT
                 id                                              AS locality_id,
                 name                                            AS locality,
-                class                                           AS locality_class,
+                coalesce(class, subtype)                        AS locality_class,
                 population,
                 list_filter(hierarchies[1], lambda h: h.subtype = 'county')[1].division_id AS county_id,
                 ST_X(geometry)                                  AS lon,
                 ST_Y(geometry)                                  AS lat
             FROM division_points
-            WHERE subtype = 'locality'
+            WHERE subtype IN ('locality', 'macrohood')
         ) TO '{localities_out}' (FORMAT parquet, COMPRESSION zstd)
     """)
     return counties_out, localities_out
