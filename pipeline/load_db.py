@@ -1,7 +1,10 @@
 """Φόρτωση των επιχειρήσεων και των κλάδων στη βάση Postgres (Neon).
 
-Γράφει πρώτα σε προσωρινούς πίνακες και μετά, μέσα σε ένα transaction,
-αντικαθιστά τους παλιούς. Το site δεν βλέπει ποτέ μισοφορτωμένα δεδομένα.
+Γράφει σε προσωρινούς πίνακες και μετά, μέσα σε ένα transaction, αντικαθιστά
+τους παλιούς. Ο παλιός πίνακας businesses σβήνεται πριν τη φόρτωση, γιατί δύο
+αντίγραφά του δεν χωράνε στα 512 MB του δωρεάν Neon· όσο φορτώνει (περίπου ένα
+λεπτό) το site δεν έχει δεδομένα. Στο τέλος εφαρμόζονται τα αποτελέσματα του
+crawl (site_checks.py).
 
 Χρήση:
     DATABASE_URL=postgres://... uv run python pipeline/load_db.py [--release 2026-10-21.0]
@@ -17,6 +20,7 @@ import duckdb
 import psycopg
 
 import normalize as n
+import site_checks
 import taxonomy
 from extract_places import latest_release
 
@@ -47,7 +51,6 @@ def stage(con: duckdb.DuckDBPyConnection, release: str) -> None:
         CREATE TABLE pg.public.businesses_staging AS
         SELECT
             substr(md5(business_key), 1, 12)    AS id,
-            business_key,
             name,
             name_search(name)                   AS search_name,
             business_type,
@@ -66,7 +69,6 @@ def stage(con: duckdb.DuckDBPyConnection, release: str) -> None:
             has_social,
             locations,
             localities,
-            counties,
             administrative_areas,
             locations_count::INTEGER            AS locations_count,
             technologies,
@@ -76,8 +78,7 @@ def stage(con: duckdb.DuckDBPyConnection, release: str) -> None:
             lighthouse_best_practices,
             lighthouse_seo,
             has_technical_weaknesses,
-            has_low_seo,
-            confidence
+            has_low_seo
         FROM '{STAGING_DIR}/businesses_{release}.parquet'
     """)
     con.sql("CREATE TABLE pg.public.industries_staging AS SELECT slug, name_el FROM taxonomy_industries")
@@ -116,6 +117,9 @@ def main() -> None:
     print(f"Overture release: {release}")
     started = time.time()
 
+    with psycopg.connect(url, autocommit=True) as conn:
+        conn.execute("DROP TABLE IF EXISTS businesses")
+
     con = duckdb.connect()
     con.sql("INSTALL postgres; LOAD postgres;")
     con.execute("ATTACH ? AS pg (TYPE postgres)", [url])
@@ -123,6 +127,8 @@ def main() -> None:
     con.sql("DETACH pg")
 
     with psycopg.connect(url, autocommit=True) as conn:
+        updated = site_checks.apply(conn, "businesses_staging")
+        print(f"{updated:,} επιχειρήσεις ενημερώθηκαν από το crawl")
         swap(conn)
         rows = conn.execute("SELECT count(*) FROM businesses").fetchone()[0]
         size = conn.execute("SELECT pg_size_pretty(pg_database_size(current_database()))").fetchone()[0]
