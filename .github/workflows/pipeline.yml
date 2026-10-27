@@ -10,6 +10,8 @@ on:
 jobs:
   pipeline:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +44,12 @@ jobs:
 
       - name: Normalize, dedupe and group into businesses
         run: uv run python pipeline/build_businesses.py --release ${{ steps.release.outputs.value }}
+
+      - name: Load into database
+        if: ${{ env.DATABASE_URL != '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run python pipeline/load_db.py --release ${{ steps.release.outputs.value }}
 
       - uses: actions/upload-artifact@v4
         with:
