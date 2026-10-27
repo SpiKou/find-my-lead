@@ -1,7 +1,9 @@
-"""Κανονικοποίηση, φιλτράρισμα θορύβου, dedupe και ομαδοποίηση σε επιχειρήσεις.
+"""Κανονικοποίηση, φιλτράρισμα θορύβου, dedupe, κλάδοι και ομαδοποίηση σε επιχειρήσεις.
 
 Διαβάζει data/staging/places_admin_<release>.parquet και γράφει:
-    data/staging/locations_<release>.parquet   μία γραμμή ανά φυσική τοποθεσία
+    data/staging/locations_<release>.parquet   μία γραμμή ανά φυσική τοποθεσία,
+                                               μαζί με όσες δεν είναι επιχειρήσεις
+                                               (entity_type <> 'business')
     data/staging/businesses_<release>.parquet  μία γραμμή ανά επιχείρηση
                                                (μια αλυσίδα = μία επιχείρηση
                                                με πολλές τοποθεσίες)
@@ -17,6 +19,7 @@ from pathlib import Path
 import duckdb
 
 import normalize as n
+import taxonomy
 from extract_places import latest_release
 
 STAGING_DIR = Path("data/staging")
@@ -169,6 +172,34 @@ def filter_and_dedupe(con: duckdb.DuckDBPyConnection) -> None:
     """)
 
 
+def classify(con: duckdb.DuckDBPyConnection) -> None:
+    """Κατηγορία, κλάδος και τύπος οντότητας για κάθε τοποθεσία, από τα taxonomy CSV.
+
+    Πρώτα η αναλυτική κατηγορία του Overture, μετά η βασική. Χωρίς κατηγορία
+    θεωρείται επιχείρηση χωρίς σαφή κατηγορία.
+    """
+    taxonomy.load(con)
+    con.sql("""
+        CREATE OR REPLACE TABLE locations AS
+        SELECT l.*,
+               coalesce(d.entity_type, b.entity_type, 'business')      AS entity_type,
+               nullif(coalesce(d.business_type, b.business_type), '')  AS business_type
+        FROM locations l
+        LEFT JOIN taxonomy_map d ON d.overture_category = l.category
+        LEFT JOIN taxonomy_map b ON b.overture_category = l.basic_category
+    """)
+
+    unmapped = con.sql("""
+        SELECT basic_category, count(*) AS n FROM locations
+        WHERE basic_category IS NOT NULL
+          AND basic_category NOT IN (SELECT overture_category FROM taxonomy_map)
+          AND coalesce(category, '') NOT IN (SELECT overture_category FROM taxonomy_map)
+        GROUP BY 1 ORDER BY 2 DESC
+    """).fetchall()
+    for category, count in unmapped:
+        print(f"  προσοχή: η κατηγορία '{category}' ({count:,}) λείπει από το category_map.csv")
+
+
 def group_businesses(con: duckdb.DuckDBPyConnection) -> None:
     con.sql(f"""
         CREATE TABLE shared_sites AS
@@ -242,10 +273,12 @@ def group_businesses(con: duckdb.DuckDBPyConnection) -> None:
         LEFT JOIN brand_site bs ON bs.brand_key = name_key(l.brand)
     """)
 
-    con.sql("""
+    con.sql(f"""
         CREATE TABLE businesses AS
+        WITH grouped AS (
         SELECT business_key,
                mode(name)                                         AS name,
+               mode(business_type)                                AS business_type,
                mode(basic_category)                               AS basic_category,
                mode(category)                                     AS category,
                any_value(brand)                                   AS brand,
@@ -262,7 +295,18 @@ def group_businesses(con: duckdb.DuckDBPyConnection) -> None:
                max(confidence)                                    AS confidence,
                list(id)                                           AS location_ids
         FROM location_business
+        WHERE entity_type = 'business'
         GROUP BY business_key
+        )
+        SELECT g.business_key, g.name,
+               g.business_type,
+               coalesce(t.name_el, '{taxonomy.UNCATEGORIZED_NAME_EL}') AS business_type_name,
+               t.industry,
+               i.name_el                                          AS industry_name,
+               g.* EXCLUDE (business_key, name, business_type)
+        FROM grouped g
+        LEFT JOIN taxonomy_types t ON t.slug = g.business_type
+        LEFT JOIN taxonomy_industries i ON i.slug = t.industry
     """)
 
 
@@ -276,6 +320,7 @@ def build(release: str) -> tuple[Path, Path]:
 
     normalize_contacts(con)
     filter_and_dedupe(con)
+    classify(con)
     group_businesses(con)
 
     con.sql(f"COPY location_business TO '{locations_out}' (FORMAT parquet, COMPRESSION zstd)")
@@ -285,6 +330,8 @@ def build(release: str) -> tuple[Path, Path]:
     print(f"{count('places'):,} εγγραφές Overture")
     print(f"{count('kept'):,} μετά το φίλτρο θορύβου (confidence >= {MIN_CONFIDENCE})")
     print(f"{count('locations'):,} τοποθεσίες μετά το dedupe")
+    for entity, n_ in con.sql("SELECT entity_type, count(*) FROM locations GROUP BY 1 ORDER BY 2 DESC").fetchall():
+        print(f"  {entity}: {n_:,}")
     print(f"{count('businesses'):,} επιχειρήσεις ({count('shared_sites'):,} κοινόχρηστα domains αγνοήθηκαν)")
     return locations_out, businesses_out
 
