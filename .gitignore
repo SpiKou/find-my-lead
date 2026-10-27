@@ -1,0 +1,25 @@
+# Data (μεγάλα αρχεία, δεν μπαίνουν στο git)
+data/
+*.parquet
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.csv
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+.next/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / local
+.DS_Store
+.claude/settings.local.json
