@@ -19,6 +19,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Run tests
+        run: uv run pytest -q
+
       - name: Resolve Overture release
         id: release
         run: |
@@ -37,8 +40,13 @@ jobs:
       - name: Assign region, municipality and locality
         run: uv run python pipeline/assign_admin.py --release ${{ steps.release.outputs.value }}
 
+      - name: Normalize, dedupe and group into businesses
+        run: uv run python pipeline/build_businesses.py --release ${{ steps.release.outputs.value }}
+
       - uses: actions/upload-artifact@v4
         with:
-          name: places-admin-${{ steps.release.outputs.value }}
-          path: data/staging/*.parquet
+          name: businesses-${{ steps.release.outputs.value }}
+          path: |
+            data/staging/locations_*.parquet
+            data/staging/businesses_*.parquet
           retention-days: 14
