@@ -5,6 +5,7 @@ data/
 *.duckdb.wal
 *.sqlite
 *.csv
+!pipeline/taxonomy/*.csv
 
 # Python
 .venv/

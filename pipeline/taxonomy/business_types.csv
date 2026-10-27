@@ -1,0 +1,101 @@
+slug,name_el,industry
+restaurant,Εστιατόριο / ταβέρνα,food-service
+cafe,Καφέ / καφετέρια,food-service
+bar,Μπαρ / κλαμπ,food-service
+bakery,Φούρνος / ζαχαροπλαστείο / παγωτό,food-service
+fast-food,Fast food / σουβλάκι / street food,food-service
+catering,Catering,food-service
+hotel,Ξενοδοχείο / resort,hospitality
+rooms,Ενοικιαζόμενα δωμάτια / διαμερίσματα,hospitality
+camping,Κάμπινγκ,hospitality
+grocery,Σούπερ μάρκετ / παντοπωλείο / mini market,food-retail
+butcher-fish,Κρεοπωλείο / ιχθυοπωλείο,food-retail
+liquor-tobacco,Κάβα / καπνοπωλείο,food-retail
+specialty-food,Delicatessen / βιολογικά / ξηροί καρποί,food-retail
+food-wholesale,Χονδρεμπόριο / διανομή τροφίμων,food-retail
+clothing,Ένδυση / υπόδηση / αξεσουάρ,retail
+jewelry,Κοσμήματα / ρολόγια,retail
+optical,Οπτικά,retail
+home-furniture,Έπιπλα / είδη σπιτιού,retail
+hardware,Σιδηρικά / οικοδομικά υλικά / κήπος,retail
+electronics,Ηλεκτρονικά / κινητά / υπολογιστές,retail
+pharmacy,Φαρμακείο,retail
+cosmetics,Καλλυντικά / είδη κομμωτηρίου,retail
+books-stationery,Βιβλιοπωλείο / χαρτοπωλείο,retail
+sports-store,Αθλητικά είδη,retail
+pet-store,Pet shop,retail
+florist-gifts,Ανθοπωλείο / δώρα / σουβενίρ,retail
+toys-hobby,Παιχνίδια / χόμπι / μουσικά όργανα,retail
+general-retail,Λοιπό λιανικό εμπόριο,retail
+shopping-mall,Εμπορικό κέντρο,retail
+car-repair,Συνεργείο / ελαστικά / περιποίηση οχήματος,automotive
+car-dealer,Αντιπροσωπεία οχημάτων,automotive
+auto-parts,Ανταλλακτικά οχημάτων,automotive
+gas-station,Πρατήριο καυσίμων,automotive
+car-rental,Ενοικίαση οχημάτων,automotive
+hair-beauty,Κομμωτήριο / κουρείο / αισθητική / nails / tattoo,beauty
+spa-massage,Spa / μασάζ,beauty
+doctor,Ιατρείο,health
+dentist,Οδοντίατρος,health
+physio,Φυσικοθεραπεία / αποκατάσταση,health
+psychologist,Ψυχολόγος / ψυχοθεραπεία,health
+clinic-lab,Κλινική / διαγνωστικό κέντρο / εργαστήριο,health
+veterinarian,Κτηνίατρος,health
+nutrition,Διατροφολόγος,health
+alt-medicine,Εναλλακτικές θεραπείες,health
+construction-company,Κατασκευαστική / τεχνική εταιρεία,construction
+engineer-architect,Μηχανικός / αρχιτέκτονας,construction
+contractor,Τεχνίτης / ανακαινίσεις,construction
+interior-design,Διακόσμηση / interior design,construction
+cleaning,Καθαρισμός,facility-services
+security,Ασφάλεια / συναγερμοί / κλειδαράς,facility-services
+hvac,Κλιματισμός / ανελκυστήρες / επισκευή συσκευών,facility-services
+moving-storage,Μετακομίσεις / αποθήκευση,facility-services
+gardening,Κηπουρική / απεντομώσεις,facility-services
+accountant,Λογιστής / φοροτεχνικός,professional-services
+lawyer,Δικηγόρος / συμβολαιογράφος,professional-services
+insurance,Ασφαλιστικό γραφείο,professional-services
+real-estate,Μεσιτικό / διαχείριση ακινήτων,professional-services
+business-consulting,Σύμβουλοι επιχειρήσεων,professional-services
+financial,Χρηματοοικονομικές υπηρεσίες,professional-services
+bank,Τράπεζα,professional-services
+employment,Ανθρώπινο δυναμικό / μεταφράσεις,professional-services
+it-services,Υπηρεσίες πληροφορικής / επισκευή Η/Υ,digital-services
+software,Εταιρεία λογισμικού,digital-services
+web-agency,Web design / ανάπτυξη ιστοσελίδων,digital-services
+telecom,Τηλεπικοινωνίες / πάροχος internet,digital-services
+marketing-agency,Διαφήμιση / marketing / social media,marketing
+graphic-design,Γραφιστική / σήμανση,marketing
+printing,Τυπογραφείο / εκτυπώσεις,marketing
+photo-video,Φωτογραφία / βίντεο / μουσική παραγωγή,marketing
+media,Μέσα ενημέρωσης / εκδόσεις,marketing
+event-planner,Διοργάνωση εκδηλώσεων / γάμων,marketing
+event-venue,Χώρος εκδηλώσεων,marketing
+manufacturer,Βιομηχανία / βιοτεχνία,manufacturing
+food-manufacturer,Παραγωγή τροφίμων / οινοποιείο / ζυθοποιία,manufacturing
+metal,Μεταλλοκατασκευές / μηχανουργείο,manufacturing
+b2b-supplier,Χονδρεμπόριο / προμηθευτές επιχειρήσεων,manufacturing
+farm,Αγρόκτημα / κτηνοτροφία / ιχθυοκαλλιέργεια,agriculture
+agri-services,Αγροτικές υπηρεσίες / συνεταιρισμοί,agriculture
+energy,Ενέργεια / φωτοβολταϊκά / περιβάλλον,energy
+boat-rental,Ενοικίαση σκαφών / θαλάσσια σπορ,maritime
+shipping-company,Ναυτιλιακή / ακτοπλοΐα / επισκευή σκαφών,maritime
+travel-agency,Ταξιδιωτικό γραφείο / tour operator,tourism-transport
+tours-activities,Ξεναγήσεις / εκδρομές / δραστηριότητες,tourism-transport
+transport-logistics,Μεταφορές / ταξί / courier,tourism-transport
+entertainment,Ψυχαγωγία / θέαμα / στοίχημα,culture-entertainment
+cinema,Κινηματογράφος / θέατρο,culture-entertainment
+art-gallery,Γκαλερί / τέχνη,culture-entertainment
+gym,Γυμναστήριο / pilates / yoga,sports-fitness
+sports-facility,Αθλητικές εγκαταστάσεις / σχολές αθλημάτων / χορού,sports-fitness
+language-school,Κέντρο ξένων γλωσσών,education
+tutoring,Φροντιστήριο / εκπαιδευτικές υπηρεσίες,education
+driving-school,Σχολή οδηγών,education
+arts-school,Σχολή μουσικής / τέχνης,education
+preschool,Παιδικός σταθμός,education
+private-school,Ιδιωτικό σχολείο / κολλέγιο / ΙΕΚ,education
+laundry,Καθαριστήριο / πλυντήριο ρούχων,personal-services
+funeral,Γραφείο τελετών,personal-services
+pet-services,Υπηρεσίες για κατοικίδια,personal-services
+senior-care,Φροντίδα ηλικιωμένων,personal-services
+personal-other,Λοιπές προσωπικές υπηρεσίες,personal-services
