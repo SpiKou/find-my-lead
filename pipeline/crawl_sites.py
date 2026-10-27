@@ -127,6 +127,14 @@ def classify_error(error: Exception | None) -> str:
 async def check_site(clients: dict[str, httpx.AsyncClient], website: str) -> Check:
     result = Check(website=website)
     fetched, error = await fetch_with_fallback(clients, website)
+    # Αν το URL δείχνει σε υποσελίδα που δεν υπάρχει πια, κρίνουμε από την αρχική.
+    root = "https://" + urlsplit(website).netloc
+    if root != website and (fetched is None or fetched[0].status_code >= 400) and (
+        error is None or classify_error(error) != "dns"
+    ):
+        root_fetched, root_error = await fetch_with_fallback(clients, root)
+        if root_fetched is not None:
+            fetched, error = root_fetched, root_error
     if fetched is None:
         result.reason = classify_error(error)
         return result
