@@ -27,9 +27,17 @@ PLATFORM_HOSTS = {
     "google.com", "goo.gl", "g.co", "g.page", "business.site", "vrbo.com",
     "expedia.com", "hotels.com", "doctoranytime.gr", "vrisko.gr", "xo.gr",
     "11880.com", "skroutz.gr", "eventbrite.com", "ubereats.com", "foody.gr",
+    "wikipedia.org",
 }
 # Δωρεάν hosting όπου κάθε υποφάκελος είναι διαφορετικό site.
 SHARED_PATH_HOSTS = {"sites.google.com", "blogs.sch.gr"}
+# Δωρεάν hosting όπου κάθε subdomain είναι διαφορετικό site (xyz.blogspot.gr).
+SHARED_SUBDOMAIN_DOMAINS = {
+    "blogspot.com", "blogspot.gr", "wixsite.com", "wordpress.com", "webnode.gr",
+    "webnode.com", "weebly.com", "sch.gr", "car.gr", "4ty.gr", "business.site",
+    "squarespace.com", "jimdofree.com", "jimdosite.com", "site123.me", "mozello.com",
+    "github.io", "netlify.app", "vercel.app",
+}
 
 FREE_EMAIL_DOMAINS = {
     "gmail.com", "googlemail.com", "hotmail.com", "hotmail.gr", "yahoo.gr",
@@ -106,7 +114,8 @@ def website_kind(raw: str | None) -> str | None:
 def site_key(raw: str | None) -> str | None:
     """Κλειδί που ταυτίζει το ίδιο site: το registered domain (π.χ. example.com.gr).
 
-    Για κοινόχρηστο hosting (sites.google.com) κρατάει και τον πρώτο υποφάκελο.
+    Για κοινόχρηστο hosting κρατάει ολόκληρο το subdomain (xyz.blogspot.gr) ή
+    τον πρώτο υποφάκελο (sites.google.com/view/xyz).
     """
     if not raw:
         return None
@@ -117,7 +126,10 @@ def site_key(raw: str | None) -> str | None:
     if host in SHARED_PATH_HOSTS:
         first = next((p for p in path.split("/") if p and p != "view"), "")
         return f"{host}/{first.lower()}" if first else host
-    return _tld(host).top_domain_under_public_suffix or None
+    domain = _tld(host).top_domain_under_public_suffix
+    if domain in SHARED_SUBDOMAIN_DOMAINS and host != domain:
+        return host
+    return domain or None
 
 
 def normalize_website(raw: str | None) -> str | None:

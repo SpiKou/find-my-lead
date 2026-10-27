@@ -36,6 +36,7 @@ def test_website_kind():
     assert website_kind("linktr.ee/foo") == "social"
     assert website_kind("https://www.booking.com/hotel/gr/x.html") == "platform"
     assert website_kind("https://maps.app.goo.gl/abc") == "platform"
+    assert website_kind("https://en.wikipedia.org/wiki/Parthenon") == "platform"
     assert website_kind("https://www.elanthipack.gr/") == "own"
     assert website_kind("") is None
 
@@ -44,6 +45,8 @@ def test_site_key():
     assert site_key("https://www.shop.example.com.gr/products") == "example.com.gr"
     assert site_key("alpha.gr/el/branches") == "alpha.gr"
     assert site_key("https://sites.google.com/view/mysite/home") == "sites.google.com/mysite"
+    assert site_key("http://remenzo.blogspot.com/") == "remenzo.blogspot.com"
+    assert site_key("https://2dim-n-filad.att.sch.gr") == "2dim-n-filad.att.sch.gr"
 
 
 def test_normalize_website():
