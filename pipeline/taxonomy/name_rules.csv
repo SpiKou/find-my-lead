@@ -1,0 +1,100 @@
+pattern,business_type,entity_type
+ιδιωτικ.*(σχολ|εκπαιδ)|εκπαιδευτηρια|κολλεγιο|college,private-school,business
+συλλογος|(ναυτικος|ιστιοπλοικος|αθλητικος|γυμναστικος|ορειβατικος|φυσιολατρικος|εκπολιτιστικος) ομιλος|σωματειο|ομοσπονδια|πολιτιστικος|συνδεσμος|ενωση γονεων|σωματειο|σκακιστικ,,organization
+ιερος ναος|εκκλησια([^σ]|$)|ενορια|μοναστηρ|μητροπολ,,organization
+δημοτικ|^δημος |δημου |περιφερει|υπουργει|εφορεια|νηπιαγωγειο|γυμνασιο|λυκειο|σχολειο|πανεπιστημ|ελτα([^α-ω]|$),,public
+^στ[αη]ση( |$)|στ[αη]ση (λεωφορ|τρολ|μετρο)|οασα|σταθμος (μετρο|ηλεκτρικου|τρενου),,infrastructure
+ξενων γλωσσων|γλωσσων|languages?|english|γλωσσικ,language-school,business
+φροντιστηρι|frontistir|tutor|σχολικης μελετης|after ?school|κεντρο μελετης,tutoring,business
+κδαπ|δημιουργικης απασχολησης|παιδικος σταθμος|βρεφονηπιακ|νηπιοκομ|daycare|day care,preschool,business
+σχολη οδηγων|οδηγων|driving,driving-school,business
+ωδειο|music school|μουσικη σχολη|σχολη χορου|dance school|σχολη μπαλετου|ballet,arts-school,business
+(ιεκ|κεκ|σαεκ)([^α-ωςa-z]|$),private-school,business
+φαρμακει|pharmacy|φαρμακο,pharmacy,business
+οδοντιατρ|dental|dentist|ορθοδοντ,dentist,business
+φυσικοθεραπ|physio|εργοθεραπ|λογοθεραπ|αποκαταστασ,physio,business
+ψυχολογ|ψυχοθεραπ|psycholog|ψυχιατρ,psychologist,business
+διαγνωστικ|μικροβιολογ|ακτινολογ|κλινικη|clinic|ιατρικο κεντρο|medical center,clinic-lab,business
+ιατρειο|ιατρος|γιατρ|doctor|dr\.? |παιδιατρ|καρδιολογ|ορθοπαιδ|δερματολογ|γυναικολογ|οφθαλμιατρ|ωρλ|παθολογ|χειρουργ|ουρολογ|ενδοκρινολογ|νευρολογ,doctor,business
+κτηνιατρ|vet([^a-z]|$)|veterin,veterinarian,business
+διατροφολογ|διαιτολογ|nutrition,nutrition,business
+βελονισμ|ομοιοπαθ|ρεικι|reiki|naturopath,alt-medicine,business
+οπτικ(α|ο|ων)([^α-ω]|$)|optic|eyewear,optical,business
+λογιστ|accounting|accountant|φοροτεχν|tax office|φοροτεχνικ,accountant,business
+δικηγορ|law (firm|office)|lawyer|συμβολαιογραφ|notary|νομικ(ο|α|ες|η) (γραφει|υπηρεσ|εταιρ),lawyer,business
+συστηματα ασφαλειας|security|συναγερμ|κλειδαρ|locksmith|φυλαξ|ντετεκτιβ,security,business
+ασφαλισ|ασφαλει|insurance,insurance,business
+μεσιτικ|real estate|κτηματομεσιτ|realty|ακινητ|properties,real-estate,business
+σιδηρικ|χρωματοπωλ|ηλεκτρολογικ(ο|α) υλικ|οικοδομικα υλικα|δομικα υλικα|εργαλει|tools|hardware|ειδη υγιειν|φυτωρ|γεωργικα εφοδια,hardware,business
+αλουμινι|σιδηροκατασκευ|σιδηρουργ|μεταλλ|inox|μηχανουργ|τορνευτ|ηλεκτροσυγκολ|metal,metal,business
+μηχανικ(ος|οι|ων|ου)|αρχιτεκτον|architect|engineer|μελετ(ες|ητικ|ητ|ων)|τοπογραφ,engineer-architect,business
+κατασκευαστικ|κατασκευες|construction|τεχνικη εταιρ|οικοδομ|builders|ανεγερσ,construction-company,business
+ηλεκτρολογ|υδραυλ|plumb|electrician|ελαιοχρωματ|χρωματιστ|painter|ξυλουργ|carpent|τεντ(ες|ων|α)|κουφωμ|μονωσ|πλακακ|γυψοσανιδ|ανακαινισ|renovat|τζαμ|σκαλωσ,contractor,business
+διακοσμησ|interior|decorat|ντιζαιν,interior-design,business
+κλιματισμ|ψυκτικ|θερμανσ|καυστηρ|ανελκυστηρ|ασανσερ|air ?condition|hvac|elevator|ηλιακ(ος|οι|ων),hvac,business
+καθαριστηρι|στεγνοκαθαρ|πλυντηρι(ο)? ρουχων|laundry|laundromat,laundry,business
+καθαρισμ|cleaning|απολυμαν,cleaning,business
+κηπουρ|απεντομ|μυοκτον|landscap|pest control|πρασιν(ο|α) ,gardening,business
+luggage|stasher|αποσκευ,tours-activities,business
+μετακομισ|moving|removals|αποθηκ|storage,moving-storage,business
+γραφειο τελετων|τελετων|funeral|κηδει,funeral,business
+κομμωτ|κουρει|barber|hair|nails?([^a-z]|$)|αισθητικ|beauty|μακιγιαζ|make ?up|tattoo|τατουαζ|ομορφια|ινστιτουτο|brows|lashes|waxing,hair-beauty,business
+spa([^a-z]|$)|μασαζ|massage|wellness|ευεξια,spa-massage,business
+γυμναστηρ|gym|fitness|pilates|yoga|crossfit|personal train|training studio,gym,business
+γηπεδ|τενις|tennis|padel|κολυμβ|swim|πολεμικ|martial|karate|καρατε|taekwondo|ποδοσφ|football|soccer|basket|μπασκετ|σκοπευ|καταδυσ|diving|surf|kite|ιππασ|ιππικ|horse riding|χορου|dance|bjj|jiu|kick ?box|boxing|πυγμαχ|αθλητικο κεντρο|sports? (center|club)|climbing|αναρριχ,sports-facility,business
+ακαδημια|academy,private-school,business
+ταξιδιωτικ|travel agen|travel,travel-agency,business
+yacht|boats?([^a-z]|$)|σκαφ|sailing|ιστιοπλο|cruises?|κρουαζ|watersport|jet ?ski|kayak|καγιακ|θαλασσια σπορ|catamaran|καταμαραν,boat-rental,business
+tours?([^a-z]|$)|εκδρομ|excursion|ξεναγ|guided|safari|jeep|atv|quad|bike rent|ποδηλατ,tours-activities,business
+rent ?a ?car|car rental|car hire|rent ?a ?moto|ενοικιασεις? (αυτοκινητ|οχηματ|μηχαν|μοτο)|hertz|avis|europcar|sixt|moto rent|scooter rent,car-rental,business
+εστιατορ|restaurant|ταβερν|tavern|ψαροταβερν|μεζεδ|ουζερ|τσιπουραδ|trattoria|osteria|bistro|pizz|πιτσ|grill|ψητοπωλ|μαγειρει|kouzina|κουζινα|σνακ μπαρ,restaurant,business
+σουβλα|γυρο|gyros?|souvla|burger|κρεπ|crepe|fast ?food|street ?food|κεμπαπ|kebab|hot ?dog|sandwich|σαντουιτσ|καντιν,fast-food,business
+καφε([^α-ω]|$)|καφες|καφεν|cafe|coffee|καφετερ|espresso|brunch,cafe,business
+bar([^a-z]|$)|μπαρ|cocktail|pub([^a-z]|$)|night ?club|wine bar|beach bar|lounge,bar,business
+φουρν|bakery|αρτοποι|αρτοζαχαρ|ζαχαροπλαστ|pastry|γλυκ(α|ισμ|ο )|παγωτ|gelato|ice ?cream|bougatsa|μπουγατσ|λουκουμαδ|σοκολατ|chocolate,bakery,business
+catering|κετερινγκ,catering,business
+mini ?market|super ?market|μαρκετ([^ι]|$)|παντοπωλ|μπακαλ|grocery|αβ βασιλοπουλ|σκλαβενιτ|μασουτ|λαικη αγορα,grocery,business
+κρεοπωλ|κρεατα|butcher|ιχθυοπωλ|ψαραγορ|πουλερικ,butcher-fish,business
+καβα|cava|ποτα([^α-ωμ]|$)|wines?([^a-z]|$)|κρασια|καπνοπωλ|περιπτερ|kiosk|tobacco|vape|ατμισ,liquor-tobacco,business
+delicatessen|βιολογικ|organic|ξηρ(οι|ων) καρπ|ελαιολαδ|olive oil|τοπικα προιοντα|παραδοσιακα προιοντα|local products|τυροπωλ|cheese|μπαχαρ|spices|καφεκοπτ|οπωροπωλ|μαναβ,specialty-food,business
+χονδρεμποριο τροφιμ|διανομη τροφιμ|food (service|distribution)|τροφιμων,food-wholesale,business
+ελαιοτριβ|οινοποι|winery|ποτοποι|ζυθοποι|brewery|τυροκομ|αλλαντοποι|αρτοβιομηχ|σφαγει|food industr|μελισσοκομ|απεσταγματ|distiller|τσιπουρ,food-manufacturer,business
+αγροκτημ|farm|φαρμα|κτηνοτροφ|πτηνοτροφ|ιχθυοτροφ|ιχθυοκαλλ|θερμοκηπ|κτημα,farm,business
+γεωπον|αγροτικ|γεωργικ|λιπασμα|συνεταιρισμ|agro,agri-services,business
+τεχνικ.*(υπολογιστ|η/υ)|service (υπολογιστ|η/υ|laptop|κινητ)|επισκευ.*(υπολογιστ|κινητ|laptop|η/υ)|computer (repair|service)|πληροφορικ|it (services|solutions)|pc (service|repair),it-services,business
+software|λογισμικ|app develop|apps([^a-z]|$),software,business
+web ?design|ιστοσελιδ|website|κατασκευη ιστοσ|web develop|e-?shop develop|eshop,web-agency,business
+marketing|διαφημισ|advertis|social media|seo([^a-z]|$)|digital agency|media agency|branding,marketing-agency,business
+γραφιστ|graphic|σημανσ|signs|επιγραφ|πινακιδ|ταμπελ,graphic-design,business
+τυπογραφ|εκτυπωσ|print|φωτοτυπ|copy center|μεταξοτυπ,printing,business
+φωτογραφ|photo|video|βιντεο|wedding film|films?([^a-z]|$)|ηχογραφ|recording studio|music production,photo-video,business
+ραδιοφων|radio|εφημεριδ|newspaper|εκδοσεις|εκδοτικ|publish|magazine|news|τηλεορασ|ειδησεις,media,business
+αιθουσα (δεξιωσεων|εκδηλωσεων)|κεντρο δεξιωσεων|κτημα .*δεξιωσ|event (venue|hall)|venue|δεξιωσεων,event-venue,business
+εκδηλωσ|δεξιωσ|γαμ(ου|ος|ων|ηλ)|wedding|events?([^a-z]|$)|party|παρτι|βαπτισ|στολισμ|μπομπονιερ,event-planner,business
+ανθοπωλ|λουλουδ|flowers?|florist|δωρα|gifts?([^a-z]|$)|souvenir|σουβενιρ|ανθοκομ,florist-gifts,business
+βιβλιοπωλ|βιβλι|books?([^a-z]|$)|χαρτοπωλ|χαρτικ|stationery|σχολικα ειδη,books-stationery,business
+παιχνιδ|toys?([^a-z]|$)|hobby|χομπι|μουσικα οργανα|musical|μοντελισμ,toys-hobby,business
+αθλητικ(α|ων) ειδ|sport ?shop|sports? store|ψαρευτικ|fishing (shop|store)|κυνηγετικ,sports-store,business
+pet ?shop|ζωοτροφ|κατοικιδ|pet ?(store|food)|pets?([^a-z]|$),pet-store,business
+καλλυντικ|cosmetic|αρωματ|perfum|parfum,cosmetics,business
+ενδυμ|ρουχ|clothing|fashion|υποδηματ|παπουτσ|shoes|τσαντ|νυφικ|bridal|εσωρουχ|lingerie|πουκαμισ|jeans|μοδα|γουνοποι|furs?([^a-z]|$),clothing,business
+κοσμημ|jewel|χρυσοχο|ρολογ|watches|ασημικ,jewelry,business
+επιπλ|furniture|στρωμ|mattress|φωτιστικ|lighting|ειδη σπιτιου|home decor|λευκα ειδη|κουρτιν|χαλι(α|ων)|carpet|πορσελαν|ειδη οικιακ,home-furniture,business
+κινητ(α|ης|ων)|mobile|computer|υπολογιστ|ηλεκτρονικ|electronic|ηλεκτρικ(ες|ων)? συσκευ|laptop|ηλεκτρικα ειδη,electronics,business
+συνεργει|garage|ελαστικ|tyres?|tires?|βουλκαν|φανοποι|πλυντηρι(ο)? αυτοκ|car ?wash|detailing|μοτο service|moto service|service αυτοκ|auto service|κλιματισμος αυτοκ|ηλεκτρολογειο αυτοκ|εξατμισ|τζαμια αυτοκ|κτεο,car-repair,business
+αντιπροσωπ.*(αυτοκιν|μοτο|οχημ)|dealer|εκθεση αυτοκιν|μεταχειρισμ|used cars|cars? (sales|center)|αυτοκινητα,car-dealer,business
+ανταλλακτικ|spare parts|auto parts|αξεσουαρ αυτοκ,auto-parts,business
+πρατηρι|καυσιμ|βενζιν|fuel|petrol|shell([^a-z]|$)|eko([^a-z]|$)|bp([^a-z]|$)|avin|aegean oil|elin|υγραεριο|πετρελαι,gas-station,business
+φωτοβολτ|photovolt|solar|ενεργει|energy|ανεμογεν|ανακυκλ|recycl|περιβαλλοντ|environment,energy,business
+βιομηχαν|βιοτεχν|εργοστασ|factory|industr|manufactur|ξυλεια|πλαστικ|συσκευασ|packag|κλωστοϋφαντ|μαρμαρ|marble,manufacturer,business
+χονδρ|wholesale|εισαγωγ|import|distribut|διανομ|αντιπροσωπει|προμηθ|suppl,b2b-supplier,business
+ναυτιλ|shipping|ναυτικ|ferry|ferries|ακτοπλο|ναυπηγ|marine|μαρινα|marina|πρακτορειο πλοιων,shipping-company,business
+ταξι([^α-ωςa-z]|$)|taxi|transfers?|μεταφορ|bus([^a-z]|$)|courier|logistics|cargo|express|ταχυμεταφορ|κτελ|ktel|limo,transport-logistics,business
+σινεμα|cinema|κινηματογρ|θεατρ|theat(er|re),cinema,business
+γκαλερι|gallery|εικαστικ|ζωγραφ|κεραμικ|ceramic|αγγειοπλαστ|handmade|χειροποιητ|art ?studio|atelier|ατελιε,art-gallery,business
+escape ?room|bowling|μπιλιαρδ|billiard|παιδοτοπ|playland|kids ?(club|park)|luna ?park|λουνα παρκ|καζινο|casino|στοιχημα|προγνωστικ|οπαπ|opap|πρακτορειο|παιδοχαρ|παιδικες χαρες|κυνηγι θησαυρ|paintball,entertainment,business
+τραπεζα|bank,bank,business
+συμβουλ|consult|management|advisors?|μεταφρασ|translat|εργασιας|recruit|hr ,business-consulting,business
+ξενοδοχ|hotel|resort|inn([^a-z]|$),hotel,business
+villa|apartment|studios([^a-z]|$)|rooms|suites|house|residence|δωματι|διαμερισμ|maisonette|guest ?house|hostel|ενοικιαζομεν|κατοικι|homes([^a-z]|$)|lofts?([^a-z]|$)|cottage|stay,rooms,business
+camping|κατασκηνω|glamping,camping,business

@@ -178,6 +178,15 @@ def name_key(name: str | None) -> str | None:
     return key or None
 
 
+def name_search(name: str | None) -> str | None:
+    """Όνομα για αναζήτηση με κανόνες: πεζά, χωρίς τόνους, με κενά."""
+    if not name:
+        return None
+    decomposed = unicodedata.normalize("NFKD", name.lower())
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", stripped).strip() or None
+
+
 def is_junk_name(name: str | None) -> bool:
     """Ονόματα που δεν είναι επιχείρηση: κενά, μόνο αριθμοί ή τηλέφωνα, μόνο σύμβολα."""
     if not name or not name.strip():

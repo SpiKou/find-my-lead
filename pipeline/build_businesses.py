@@ -175,18 +175,44 @@ def filter_and_dedupe(con: duckdb.DuckDBPyConnection) -> None:
 def classify(con: duckdb.DuckDBPyConnection) -> None:
     """Κατηγορία, κλάδος και τύπος οντότητας για κάθε τοποθεσία, από τα taxonomy CSV.
 
-    Πρώτα η αναλυτική κατηγορία του Overture, μετά η βασική. Χωρίς κατηγορία
-    θεωρείται επιχείρηση χωρίς σαφή κατηγορία.
+    Πρώτα η αναλυτική κατηγορία του Overture, μετά η βασική. Για εγγραφές
+    χωρίς κατηγορία ή με γενική κατηγορία, ένας κανόνας στο όνομα έχει
+    προτεραιότητα. Ό,τι μείνει χωρίς κατηγορία θεωρείται επιχείρηση χωρίς σαφή
+    κατηγορία.
     """
     taxonomy.load(con)
+    con.create_function("name_rule", taxonomy.name_rule_udf, ["VARCHAR"], "VARCHAR", null_handling="special")
+
+    # Ο κανόνας τρέχει μία φορά ανά μοναδικό όνομα.
+    con.sql("""
+        CREATE TABLE name_rule_hits AS
+        SELECT name, name_rule(name) AS hit
+        FROM (
+            SELECT DISTINCT name FROM locations
+            WHERE category IS NULL
+               OR category IN (SELECT overture_category FROM taxonomy_generic)
+        )
+    """)
+
     con.sql("""
         CREATE OR REPLACE TABLE locations AS
         SELECT l.*,
-               coalesce(d.entity_type, b.entity_type, 'business')      AS entity_type,
-               nullif(coalesce(d.business_type, b.business_type), '')  AS business_type
+               CASE WHEN r.hit IS NOT NULL THEN split_part(r.hit, '|', 2)
+                    ELSE coalesce(d.entity_type, b.entity_type, 'business')
+               END AS entity_type,
+               CASE WHEN r.hit IS NOT NULL THEN nullif(split_part(r.hit, '|', 1), '')
+                    ELSE nullif(coalesce(d.business_type, b.business_type), '')
+               END AS business_type,
+               CASE WHEN r.hit IS NOT NULL THEN 'name_rule'
+                    WHEN coalesce(d.business_type, b.business_type, d.entity_type, b.entity_type) IS NOT NULL
+                         THEN 'category'
+               END AS classified_by
         FROM locations l
         LEFT JOIN taxonomy_map d ON d.overture_category = l.category
         LEFT JOIN taxonomy_map b ON b.overture_category = l.basic_category
+        LEFT JOIN name_rule_hits r
+               ON r.name = l.name
+              AND (l.category IS NULL OR l.category IN (SELECT overture_category FROM taxonomy_generic))
     """)
 
     unmapped = con.sql("""
@@ -332,6 +358,8 @@ def build(release: str) -> tuple[Path, Path]:
     print(f"{count('locations'):,} τοποθεσίες μετά το dedupe")
     for entity, n_ in con.sql("SELECT entity_type, count(*) FROM locations GROUP BY 1 ORDER BY 2 DESC").fetchall():
         print(f"  {entity}: {n_:,}")
+    renamed = con.sql("SELECT count(*) FROM locations WHERE classified_by = 'name_rule'").fetchall()[0][0]
+    print(f"  {renamed:,} κατηγοριοποιήθηκαν από κανόνα ονόματος")
     print(f"{count('businesses'):,} επιχειρήσεις ({count('shared_sites'):,} κοινόχρηστα domains αγνοήθηκαν)")
     return locations_out, businesses_out
 
