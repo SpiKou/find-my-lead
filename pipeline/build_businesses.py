@@ -336,6 +336,44 @@ def group_businesses(con: duckdb.DuckDBPyConnection) -> None:
     """)
 
 
+def add_filter_fields(con: duckdb.DuckDBPyConnection) -> None:
+    """Πεδία για τα φίλτρα και την εξαγωγή, με τα ονόματα στηλών του LeadCatalog.
+
+    Η κατάσταση website (active/inactive), οι τεχνολογίες, το e-shop και τα
+    Lighthouse scores συμπληρώνονται από το crawl. Μέχρι τότε είναι NULL και
+    website_status = 'unknown' για όσες έχουν website.
+    """
+    con.sql("""
+        CREATE TABLE business_socials AS
+        SELECT business_key,
+               list(DISTINCT social_platform(url)) FILTER (WHERE social_platform(url) IS NOT NULL) AS platforms
+        FROM (SELECT business_key, unnest(socials) AS url FROM businesses)
+        GROUP BY 1
+    """)
+    con.sql("""
+        CREATE OR REPLACE TABLE businesses AS
+        SELECT b.*,
+               CASE WHEN b.website IS NULL THEN 'none' ELSE 'unknown' END       AS website_status,
+               len(b.emails) > 0                                               AS has_email,
+               len(b.phones) > 0                                               AS has_phone,
+               coalesce(len(s.platforms), 0) > 0                               AS has_social,
+               coalesce(s.platforms, [])                                       AS social_platforms,
+               -- Οι περιφέρειες όπως τις δείχνει το LeadCatalog: "Περιφέρεια Αττικής".
+               list_transform(b.regions, lambda r:
+                   CASE WHEN r LIKE 'Αυτόνομη%' THEN r ELSE 'Περιφέρεια ' || r END) AS administrative_areas,
+               CAST([] AS VARCHAR[])                                           AS technologies,
+               CAST(NULL AS BOOLEAN)                                           AS eshop,
+               CAST(NULL AS INTEGER)                                           AS lighthouse_performance,
+               CAST(NULL AS INTEGER)                                           AS lighthouse_accessibility,
+               CAST(NULL AS INTEGER)                                           AS lighthouse_best_practices,
+               CAST(NULL AS INTEGER)                                           AS lighthouse_seo,
+               CAST(NULL AS BOOLEAN)                                           AS has_technical_weaknesses,
+               CAST(NULL AS BOOLEAN)                                           AS has_low_seo
+        FROM businesses b
+        LEFT JOIN business_socials s USING (business_key)
+    """)
+
+
 def build(release: str) -> tuple[Path, Path]:
     locations_out = STAGING_DIR / f"locations_{release}.parquet"
     businesses_out = STAGING_DIR / f"businesses_{release}.parquet"
@@ -348,6 +386,7 @@ def build(release: str) -> tuple[Path, Path]:
     filter_and_dedupe(con)
     classify(con)
     group_businesses(con)
+    add_filter_fields(con)
 
     con.sql(f"COPY location_business TO '{locations_out}' (FORMAT parquet, COMPRESSION zstd)")
     con.sql(f"COPY businesses TO '{businesses_out}' (FORMAT parquet, COMPRESSION zstd)")
