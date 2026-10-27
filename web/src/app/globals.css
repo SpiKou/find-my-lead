@@ -3,3 +3,17 @@
 @theme inline {
   --font-sans: var(--font-inter);
 }
+
+@theme {
+  --color-canvas: #efeee8;
+  --color-paper: #ffffff;
+  --color-ink: #1c1f1a;
+  --color-ink-soft: #3d4239;
+  --color-muted: #6f746a;
+  --color-line: #e3e1d8;
+  --color-line-strong: #cfccc0;
+  --color-brand: #1f4d3a;
+  --color-brand-strong: #163a2b;
+  --color-brand-soft: #e6efe9;
+  --color-highlight: #d9f26b;
+}
