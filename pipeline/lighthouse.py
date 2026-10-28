@@ -17,6 +17,7 @@ import asyncio
 import os
 import sys
 import time
+import zlib
 from datetime import datetime, timezone
 
 import httpx
@@ -32,7 +33,10 @@ CATEGORIES = {
 THRESHOLD = 60
 # 400 αιτήματα ανά 100 δευτερόλεπτα· κρατάμε περιθώριο.
 REQUESTS_PER_SECOND = 3.5
-CONCURRENCY = 100
+# Τα αιτήματα παίρνουν 20–60 δευτερόλεπτα, οπότε χρειάζονται πολλά ταυτόχρονα.
+CONCURRENCY = 250
+QUOTA_USERS = 50
+MAX_ATTEMPTS = 6
 SAVE_EVERY = 500
 RECHECK_DAYS = 90
 
@@ -62,22 +66,40 @@ def parse(data: dict) -> dict:
     return {**scores, "error": error}
 
 
-async def check(client: httpx.AsyncClient, key: str, website: str) -> dict:
+class Pacer:
+    """Μοιράζει τα αιτήματα ομοιόμορφα στον χρόνο, μαζί με τις επαναλήψεις."""
+
+    def __init__(self, per_second: float):
+        self.interval = 1 / per_second
+        self.next_slot = time.monotonic()
+
+    async def wait(self) -> None:
+        now = time.monotonic()
+        slot = max(self.next_slot, now)
+        self.next_slot = slot + self.interval
+        if slot > now:
+            await asyncio.sleep(slot - now)
+
+
+async def check(client: httpx.AsyncClient, key: str, website: str, pacer: Pacer) -> dict | None:
+    """Τα scores ενός site· None αν η Google δεν το δέχτηκε τώρα (ξαναμπαίνει την επόμενη φορά)."""
     params = [("url", website), ("key", key), ("strategy", "mobile")]
     params += [("category", c) for c in CATEGORIES]
     # Μόνο τα scores, όχι όλη την αναφορά (μερικά MB ανά site).
     params.append(("fields", "lighthouseResult/categories/*/score,lighthouseResult/runtimeError"))
-    for attempt in range(3):
+    # Το όριο «ανά χρήστη» (60 ανά 100 δευτερόλεπτα) μετράει χωριστά για κάθε
+    # quotaUser· έτσι ισχύει μόνο το όριο του project (400 ανά 100 δευτερόλεπτα).
+    params.append(("quotaUser", f"fml-{zlib.crc32(website.encode()) % QUOTA_USERS}"))
+    for attempt in range(MAX_ATTEMPTS):
+        await pacer.wait()
         try:
             response = await client.get(API, params=params)
-        except httpx.HTTPError as e:
-            if attempt == 2:
-                return {"error": type(e).__name__}
+        except httpx.HTTPError:
             continue
         if response.status_code == 429:
             if "per day" in response.text.lower() or "perday" in response.text.lower():
                 raise QuotaExceeded
-            await asyncio.sleep(30)
+            await asyncio.sleep(30 * (attempt + 1))
             continue
         if response.status_code >= 500 and attempt < 2:
             continue
@@ -85,33 +107,31 @@ async def check(client: httpx.AsyncClient, key: str, website: str) -> dict:
             # Συνήθως σημαίνει ότι η Google δεν μπόρεσε να ανοίξει το site.
             return {"error": f"http_{response.status_code}"}
         return parse(response.json())
-    return {"error": "retries"}
+    return None
 
 
 async def run(websites: list[str], key: str, on_batch, deadline: float | None) -> int:
     semaphore = asyncio.Semaphore(CONCURRENCY)
+    pacer = Pacer(REQUESTS_PER_SECOND)
     pending: list[dict] = []
-    done = 0
+    done = skipped = 0
     started = time.time()
-    next_slot = time.monotonic()
     stop = asyncio.Event()
 
     async def worker(website: str) -> None:
-        nonlocal done, next_slot
+        nonlocal done, skipped
         async with semaphore:
             if stop.is_set() or (deadline and time.time() > deadline):
                 return
-            # Ένα αίτημα κάθε 1/REQUESTS_PER_SECOND δευτερόλεπτα.
-            wait = next_slot - time.monotonic()
-            next_slot = max(next_slot, time.monotonic()) + 1 / REQUESTS_PER_SECOND
-            if wait > 0:
-                await asyncio.sleep(wait)
             try:
-                result = await check(client, key, website)
+                result = await check(client, key, website, pacer)
             except QuotaExceeded:
                 if not stop.is_set():
                     print("  Τέλος του ημερήσιου ορίου της Google", flush=True)
                 stop.set()
+                return
+            if result is None:
+                skipped += 1
                 return
             pending.append({"website": website, "checked_at": datetime.now(timezone.utc), **result})
             done += 1
@@ -126,6 +146,8 @@ async def run(websites: list[str], key: str, on_batch, deadline: float | None) -
         await asyncio.gather(*(worker(w) for w in websites))
     if pending:
         await asyncio.to_thread(on_batch, pending)
+    if skipped:
+        print(f"  {skipped:,} sites δεν έγιναν δεκτά από τη Google και μένουν για την επόμενη φορά", flush=True)
     return done
 
 
@@ -137,7 +159,9 @@ def websites_to_check(conn: psycopg.Connection, limit: int, recheck_days: int) -
         SELECT b.website FROM businesses b
         LEFT JOIN lighthouse_checks l USING (website)
         WHERE b.website_status = 'active'
-          AND (l.checked_at IS NULL OR l.checked_at < now() - make_interval(days => %s))
+          AND (l.checked_at IS NULL OR l.checked_at < now() - make_interval(days => %s)
+               -- Παλιότερες απορρίψεις λόγω ορίου ή χρόνου ξαναδοκιμάζονται.
+               OR l.error = 'retries' OR l.error LIKE '%%Timeout')
         GROUP BY b.website, l.checked_at
         ORDER BY l.checked_at NULLS FIRST, md5(b.website)
         LIMIT %s
