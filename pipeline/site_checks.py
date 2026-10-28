@@ -1,7 +1,7 @@
 """Ο πίνακας site_checks της βάσης και η εφαρμογή του στις επιχειρήσεις.
 
 Το crawl (crawl_sites.py) γράφει ένα αποτέλεσμα ανά website. Από εκεί
-συμπληρώνονται στις επιχειρήσεις η κατάσταση website, οι τεχνολογίες, το e-shop
+συμπληρώνονται στις επιχειρήσεις η κατάσταση website και ο λόγος της, οι τεχνολογίες, το e-shop
 και τα emails/socials που βρέθηκαν στο site. Εφαρμόζεται μετά από κάθε crawl
 και κάθε φόρτωση (load_db.py), ώστε τα αποτελέσματα να μη χάνονται.
 """
@@ -24,9 +24,11 @@ def _union(column: str) -> str:
 def apply(conn: psycopg.Connection, table: str = "businesses") -> int:
     """Ενημερώνει τον πίνακα επιχειρήσεων από το site_checks· επιστρέφει πόσες άλλαξαν."""
     conn.execute(CREATE)
+    conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS website_reason text")
     cursor = conn.execute(f"""
         UPDATE {table} b SET
             website_status   = c.status,
+            website_reason   = c.reason,
             technologies     = c.technologies::varchar[],
             eshop            = c.eshop,
             emails           = {_union("emails")},
@@ -38,6 +40,7 @@ def apply(conn: psycopg.Connection, table: str = "businesses") -> int:
         WHERE b.website = c.website
           AND (
             b.website_status IS DISTINCT FROM c.status
+            OR b.website_reason IS DISTINCT FROM c.reason
             OR b.technologies IS DISTINCT FROM c.technologies::varchar[]
             OR b.eshop IS DISTINCT FROM c.eshop
             OR NOT c.emails::varchar[] <@ b.emails

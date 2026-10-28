@@ -51,7 +51,8 @@
 
 ## Εξαγωγή CSV
 
-Οι 20 στήλες του LeadCatalog, από τα πεδία του `businesses`:
+Οι 20 στήλες του LeadCatalog, από τα πεδία του `businesses`, και μία δική μας
+(`website_issue`):
 
 | Στήλη CSV | Πεδίο |
 |---|---|
@@ -60,6 +61,7 @@
 | industry | `industry_name` |
 | website | `website` |
 | website_status | `website_status` |
+| website_issue | λόγος ανενεργού website από το `website_reason` (π.χ. «Το domain δεν υπάρχει») |
 | emails | `emails` (με `; `) |
 | phones | `phones` (με `; `) |
 | social_urls | `socials` (με `; `) |

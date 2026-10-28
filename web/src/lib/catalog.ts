@@ -3,6 +3,7 @@
 import { cacheLife } from "next/cache";
 import { getDb } from "@/lib/db";
 import { type Filters, UNCATEGORIZED, cityValue, normalizeSearch, splitCity } from "@/lib/filters";
+import { websiteIssue } from "@/lib/website-reason";
 
 export const PAGE_SIZE = 20;
 
@@ -14,6 +15,7 @@ export type BusinessRow = {
   name: string;
   website: string | null;
   website_status: string;
+  website_reason: string | null;
   business_type_name: string;
   industry_name: string | null;
   city: string | null;
@@ -99,7 +101,7 @@ function requireDb() {
 }
 
 const RESULT_COLUMNS = `
-  id, name, website, website_status, business_type_name, industry_name,
+  id, name, website, website_status, website_reason, business_type_name, industry_name,
   localities[1] AS city, administrative_areas[1] AS region, locations_count,
   emails, phones, socials, social_platforms, eshop`;
 
@@ -119,13 +121,15 @@ export async function searchBusinesses(filters: Filters, offset = 0) {
   return { rows: rows as BusinessRow[], total: total as number | null };
 }
 
-// Οι 20 στήλες της εξαγωγής CSV, όπως στο LeadCatalog (docs/filters.md).
+// Οι 20 στήλες της εξαγωγής CSV του LeadCatalog (docs/filters.md), μαζί με τον
+// λόγο που ένα website είναι ανενεργό.
 export const EXPORT_COLUMNS = [
   "business_name",
   "business_type",
   "industry",
   "website",
   "website_status",
+  "website_issue",
   "emails",
   "phones",
   "social_urls",
@@ -145,7 +149,7 @@ export const EXPORT_COLUMNS = [
 
 const EXPORT_SELECT = `
   id, search_name, name AS business_name, business_type_name AS business_type, industry_name AS industry,
-  website, website_status, emails, phones, socials AS social_urls, locations,
+  website, website_status, website_reason, emails, phones, socials AS social_urls, locations,
   localities AS locality, administrative_areas AS administrative_area, locations_count,
   technologies, eshop, has_technical_weaknesses, has_low_seo, lighthouse_performance,
   lighthouse_accessibility, lighthouse_best_practices, lighthouse_seo`;
@@ -168,6 +172,9 @@ export async function* exportBusinesses(filters: Filters, batchSize = 2000) {
       keyParams,
     )) as Record<string, unknown>[];
     if (rows.length === 0) return;
+    for (const row of rows) {
+      row.website_issue = websiteIssue(row.website_status as string, row.website_reason as string);
+    }
     yield rows;
     if (rows.length < batchSize) return;
     const last = rows[rows.length - 1];

@@ -1,4 +1,5 @@
 import type { BusinessRow } from "@/lib/catalog";
+import { websiteIssue } from "@/lib/website-reason";
 
 const PLATFORMS: Record<string, { label: string; hosts: string[] }> = {
   facebook: { label: "Facebook", hosts: ["facebook.com", "fb.com"] },
@@ -49,6 +50,7 @@ function ContactChip({ href, title, children }: { href?: string; title?: string;
 
 export function BusinessRowCard({ row }: { row: BusinessRow }) {
   const others = row.locations_count - 1;
+  const issue = websiteIssue(row.website_status, row.website_reason);
   return (
     <li className="grid gap-x-6 gap-y-3 rounded-xl border border-line bg-paper px-4 py-4 md:grid-cols-[1.3fr_1fr_0.9fr_1.2fr] md:items-start">
       <div className="flex min-w-0 gap-3">
@@ -74,6 +76,7 @@ export function BusinessRowCard({ row }: { row: BusinessRow }) {
             ) : (
               <span>Χωρίς website</span>
             )}
+            {issue && <span className="text-red-600">{issue}</span>}
             {row.eshop && (
               <span className="rounded bg-brand-soft px-1.5 py-0.5 font-medium text-brand">E-shop</span>
             )}

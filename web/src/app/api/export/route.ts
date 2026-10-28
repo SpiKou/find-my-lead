@@ -10,7 +10,7 @@ function csvValue(value: unknown): string {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-// Εξαγωγή CSV με τις 20 στήλες του LeadCatalog. Γράφεται σταδιακά (stream),
+// Εξαγωγή CSV με τις στήλες του LeadCatalog και τον λόγο ανενεργού website. Γράφεται σταδιακά (stream),
 // ώστε να δουλεύει και για όλο τον κατάλογο.
 export async function GET(request: NextRequest) {
   const filters = parseFilters(request.nextUrl.searchParams);
