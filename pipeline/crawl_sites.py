@@ -18,11 +18,14 @@ import re
 import ssl
 import sys
 import time
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import anyio.to_thread
 import duckdb
 import httpx
 import psycopg
@@ -34,6 +37,8 @@ import site_signals as s
 OUTPUT = Path("data/staging/site_checks.parquet")
 CONCURRENCY = 100
 RETRY_CONCURRENCY = 20
+# Τα αποτελέσματα αποθηκεύονται στη βάση ανά τόσα sites.
+SAVE_EVERY = 2000
 RETRY_REASONS = {"timeout", "connection"}
 # Χωρίς όριο αναμονής για ελεύθερη σύνδεση: τον ρυθμό τον ορίζει το semaphore.
 TIMEOUT = httpx.Timeout(10.0, connect=8.0, pool=None)
@@ -44,6 +49,7 @@ USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/128.0 Safari/537.36 FindMyLead/0.1"
 )
+_executor: ProcessPoolExecutor | None = None
 _META_CHARSET = re.compile(rb"""<meta[^>]+charset=["']?([\w-]+)""", re.I)
 
 COLUMNS = [
@@ -154,7 +160,14 @@ async def check_site(clients: dict[str, httpx.AsyncClient], website: str) -> Che
     if n.website_kind(final_url) in ("social", "platform"):
         result.reason = "redirect_platform"
         return result
-    if s.is_placeholder(html, final_host):
+    cookies = [c.lower() for c in response.cookies.keys()]
+    # Η ανάλυση του HTML θέλει CPU· τρέχει σε άλλη διεργασία ώστε να μην
+    # καθυστερεί τα υπόλοιπα αιτήματα (αλλιώς λήγουν ψεύτικα ως timeout).
+    loop = asyncio.get_running_loop()
+    signals = await loop.run_in_executor(
+        _executor, s.analyze, html, dict(response.headers), cookies, final_url, final_host
+    )
+    if signals["placeholder"]:
         result.reason = "placeholder"
         return result
 
@@ -167,31 +180,44 @@ async def check_site(clients: dict[str, httpx.AsyncClient], website: str) -> Che
     if original_site and n.site_key(final_url) != original_site:
         result.reason = "redirect_domain"
 
-    cookies = [c.lower() for c in response.cookies.keys()]
-    links = s.extract_links(html, final_url)
-    emails = s.extract_emails(html)
-    socials = s.extract_socials(links)
-
-    if not emails:
-        contact = s.find_contact_page(links, final_host)
-        if contact and contact.rstrip("/") != final_url.rstrip("/"):
-            try:
-                contact_response, contact_html = await fetch(clients["lenient"], contact)
-                if contact_response.status_code < 400:
-                    emails = s.extract_emails(contact_html)
-                    socials = sorted(set(socials) | set(s.extract_socials(s.extract_links(contact_html, contact))))
-            except httpx.HTTPError:
-                pass
+    emails, socials = signals["emails"], signals["socials"]
+    contact = signals["contact_page"]
+    if not emails and contact and contact.rstrip("/") != final_url.rstrip("/"):
+        try:
+            contact_response, contact_html = await fetch(clients["lenient"], contact)
+            if contact_response.status_code < 400:
+                emails, contact_socials = await loop.run_in_executor(
+                    _executor, s.analyze_contact, contact_html, contact
+                )
+                socials = sorted(set(socials) | set(contact_socials))
+        except httpx.HTTPError:
+            pass
 
     result.emails = emails
     result.socials = socials
     result.social_platforms = sorted({p for p in map(n.social_platform, socials) if p})
-    result.technologies = s.detect_technologies(html, dict(response.headers), cookies)
-    result.eshop = s.detect_eshop(html, result.technologies)
+    result.technologies = signals["technologies"]
+    result.eshop = signals["eshop"]
     return result
 
 
-async def crawl(websites: list[str], concurrency: int = CONCURRENCY) -> list[Check]:
+async def crawl(
+    websites: list[str],
+    concurrency: int = CONCURRENCY,
+    on_batch: Callable[[list[Check]], None] | None = None,
+    deadline: float | None = None,
+) -> list[Check]:
+    """Ελέγχει τα sites· κάθε SAVE_EVERY αποτελέσματα καλεί το on_batch.
+
+    Μετά το deadline (time.time()) δεν ξεκινά νέα sites, ώστε το job να
+    προλάβει να αποθηκεύσει πριν το κόψει το όριο χρόνου του GitHub.
+    """
+    global _executor
+    # Το DNS γίνεται σε threads· με το προεπιλεγμένο όριο των 40 οι
+    # αναζητήσεις περιμένουν η μία την άλλη και λήγουν.
+    anyio.to_thread.current_default_thread_limiter().total_tokens = concurrency * 2
+    _executor = ProcessPoolExecutor(max_workers=os.cpu_count() or 2)
+
     limits = httpx.Limits(max_connections=None, max_keepalive_connections=0)
     common = dict(
         timeout=TIMEOUT,
@@ -200,49 +226,61 @@ async def crawl(websites: list[str], concurrency: int = CONCURRENCY) -> list[Che
         limits=limits,
         headers={"User-Agent": USER_AGENT, "Accept-Language": "el,en;q=0.8"},
     )
-    semaphore = asyncio.Semaphore(concurrency)
-    results: list[Check] = []
+    results: dict[str, Check] = {}
+    pending: list[Check] = []
     started = time.time()
 
-    async with (
-        httpx.AsyncClient(verify=True, **common) as strict,
-        httpx.AsyncClient(verify=False, **common) as lenient,
-    ):
-        clients = {"strict": strict, "lenient": lenient}
+    async def flush(force: bool = False) -> None:
+        if on_batch and pending and (force or len(pending) >= SAVE_EVERY):
+            batch = pending.copy()
+            pending.clear()
+            await asyncio.to_thread(on_batch, batch)
+
+    async def run(sites: list[str], limit: int, per_site_timeout: float, label: str) -> None:
+        semaphore = asyncio.Semaphore(limit)
+        done = 0
 
         async def worker(website: str) -> None:
+            nonlocal done
             async with semaphore:
+                if deadline and time.time() > deadline:
+                    return
                 try:
                     # Όριο ανά site, ώστε ένα αργό site να μην κρατάει θέση για πάντα.
-                    results.append(await asyncio.wait_for(check_site(clients, website), timeout=45))
+                    result = await asyncio.wait_for(check_site(clients, website), timeout=per_site_timeout)
                 except Exception as e:  # noqa: BLE001
-                    results.append(Check(website=website, reason=classify_error(e)))
-                done = len(results)
-                if done % 500 == 0 or done == len(websites):
+                    result = Check(website=website, reason=classify_error(e))
+                results[website] = result
+                pending.append(result)
+                done += 1
+                if done % 500 == 0 or done == len(sites):
                     rate = done / max(time.time() - started, 1)
-                    print(f"  {done:,}/{len(websites):,} ({rate:.0f}/s)", flush=True)
+                    print(f"  {label} {done:,}/{len(sites):,} ({rate:.1f}/s)", flush=True)
+                await flush()
 
-        await asyncio.gather(*(worker(w) for w in websites))
+        await asyncio.gather(*(worker(w) for w in sites))
+        await flush(force=True)
 
-        # Πολλά timeouts οφείλονται στον φόρτο του πρώτου γύρου· ξαναδοκιμάζουμε
-        # αυτά τα sites με λιγότερα ταυτόχρονα αιτήματα.
-        retry = [r.website for r in results if r.reason in RETRY_REASONS]
-        if retry:
-            print(f"  Δεύτερη προσπάθεια για {len(retry):,} sites", flush=True)
-            semaphore = asyncio.Semaphore(RETRY_CONCURRENCY)
-            retried: list[Check] = []
+    try:
+        async with (
+            httpx.AsyncClient(verify=True, **common) as strict,
+            httpx.AsyncClient(verify=False, **common) as lenient,
+        ):
+            clients = {"strict": strict, "lenient": lenient}
+            await run(websites, concurrency, 45, "")
 
-            async def retry_worker(website: str) -> None:
-                async with semaphore:
-                    try:
-                        retried.append(await asyncio.wait_for(check_site(clients, website), timeout=60))
-                    except Exception as e:  # noqa: BLE001
-                        retried.append(Check(website=website, reason=classify_error(e)))
+            # Όσα έληξαν ξαναδοκιμάζονται με λιγότερα ταυτόχρονα αιτήματα.
+            retry = [w for w, r in results.items() if r.reason in RETRY_REASONS]
+            if retry:
+                print(f"  Δεύτερη προσπάθεια για {len(retry):,} sites", flush=True)
+                await run(retry, RETRY_CONCURRENCY, 60, "επανάληψη")
+    finally:
+        _executor.shutdown(cancel_futures=True)
 
-            await asyncio.gather(*(retry_worker(w) for w in retry))
-            by_site = {r.website: r for r in retried}
-            results = [by_site.get(r.website, r) for r in results]
-    return results
+    skipped = len(websites) - len(results)
+    if skipped:
+        print(f"  {skipped:,} sites έμειναν για το επόμενο τρέξιμο (όριο χρόνου)", flush=True)
+    return list(results.values())
 
 
 def websites_to_check(conn: psycopg.Connection, sample: int | None, shard: tuple[int, int]) -> list[str]:
@@ -322,6 +360,7 @@ def main() -> None:
     parser.add_argument("--no-save", action="store_true", help="να μη γραφτούν στη βάση")
     parser.add_argument("--concurrency", type=int, default=CONCURRENCY)
     parser.add_argument("--shard", default="0/1", help="κομμάτι i/N για παράλληλα jobs (π.χ. 2/4)")
+    parser.add_argument("--max-minutes", type=float, help="μετά από τόσα λεπτά δεν ξεκινά νέα sites")
     args = parser.parse_args()
 
     url = os.environ.get("DATABASE_URL")
@@ -333,19 +372,22 @@ def main() -> None:
         websites = websites_to_check(conn, args.sample, (index, count))
     print(f"{len(websites):,} sites για έλεγχο")
 
+    def save_batch(batch: list[Check]) -> None:
+        with psycopg.connect(url, autocommit=True) as conn:
+            save(conn, batch)
+            updated = site_checks.apply(conn)
+        print(f"  Αποθηκεύτηκαν {len(batch):,} sites, {updated:,} επιχειρήσεις ενημερώθηκαν", flush=True)
+
     started = time.time()
-    results = asyncio.run(crawl(websites, args.concurrency))
+    deadline = started + args.max_minutes * 60 if args.max_minutes else None
+    results = asyncio.run(
+        crawl(websites, args.concurrency, on_batch=None if args.no_save else save_batch, deadline=deadline)
+    )
     print(f"Έλεγχος σε {time.time() - started:.0f}s")
 
-    if not results:
-        return
-    write_parquet(results)
-    summarize(results)
-    if not args.no_save:
-        with psycopg.connect(url, autocommit=True) as conn:
-            save(conn, results)
-            updated = site_checks.apply(conn)
-        print(f"Αποθηκεύτηκαν στον πίνακα site_checks, {updated:,} επιχειρήσεις ενημερώθηκαν")
+    if results:
+        write_parquet(results)
+        summarize(results)
 
 
 if __name__ == "__main__":

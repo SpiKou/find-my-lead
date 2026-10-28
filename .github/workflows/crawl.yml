@@ -34,7 +34,7 @@ jobs:
 
       - name: Crawl websites
         run: |
-          args="--shard ${{ matrix.shard }}/4"
+          args="--shard ${{ matrix.shard }}/4 --max-minutes 320"
           if [ -n "${{ inputs.sample }}" ]; then args="$args --sample ${{ inputs.sample }}"; fi
           if [ "${{ inputs.save }}" != "true" ]; then args="$args --no-save"; fi
           uv run python -W ignore pipeline/crawl_sites.py $args
