@@ -4,7 +4,7 @@
 τους παλιούς. Ο παλιός πίνακας businesses σβήνεται πριν τη φόρτωση, γιατί δύο
 αντίγραφά του δεν χωράνε στα 512 MB του δωρεάν Neon· όσο φορτώνει (περίπου ένα
 λεπτό) το site δεν έχει δεδομένα. Στο τέλος εφαρμόζονται τα αποτελέσματα του
-crawl (site_checks.py).
+crawl (site_checks.py) και του Lighthouse (lighthouse.py).
 
 Χρήση:
     DATABASE_URL=postgres://... uv run python pipeline/load_db.py [--release 2026-10-21.0]
@@ -19,6 +19,7 @@ from pathlib import Path
 import duckdb
 import psycopg
 
+import lighthouse
 import normalize as n
 import site_checks
 import taxonomy
@@ -129,6 +130,8 @@ def main() -> None:
     with psycopg.connect(url, autocommit=True) as conn:
         updated = site_checks.apply(conn, "businesses_staging")
         print(f"{updated:,} επιχειρήσεις ενημερώθηκαν από το crawl")
+        updated = lighthouse.apply(conn, "businesses_staging")
+        print(f"{updated:,} επιχειρήσεις ενημερώθηκαν από το Lighthouse")
         swap(conn)
         rows = conn.execute("SELECT count(*) FROM businesses").fetchone()[0]
         size = conn.execute("SELECT pg_size_pretty(pg_database_size(current_database()))").fetchone()[0]
