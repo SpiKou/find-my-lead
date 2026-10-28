@@ -52,7 +52,8 @@ TECH_RULES: dict[str, dict[str, list[str]]] = {
         "html": [r"text/x-magento-init", r"mage/cookies", r"/static/version\d+/frontend/", r"/skin/frontend/"],
     },
     "Angular": {
-        "html": [r"\sng-version=\"", r"\sng-app[=\s>]"],
+        # Μετράει και το παλιό AngularJS, όπως το LeadCatalog.
+        "html": [r"\sng-version=\"", r"ng-app[=\s>\"']", r"angular(\.min)?\.js"],
     },
     "Squarespace": {
         "html": [r"static1\.squarespace\.com", r"squarespace-cdn\.com"],
@@ -67,11 +68,12 @@ TECH_RULES: dict[str, dict[str, list[str]]] = {
         "html": [r"data-reactroot", r"react-dom(\.production)?(\.min)?\.js"],
     },
     "Vue": {
-        "html": [r"\sdata-v-[0-9a-f]{8}", r"vue(\.runtime)?(\.global)?(\.prod)?(\.min)?\.js"],
+        "html": [r"\sdata-v-[0-9a-f]{8}", r"data-v-app", r"vue(\.runtime)?(\.global)?(\.prod)?(\.min)?\.js"],
     },
 }
-# Τεχνολογίες που προϋποθέτουν άλλες (όπως στο Wappalyzer).
-TECH_IMPLIES = {"Next.js": "React", "Nuxt": "Vue", "WooCommerce": "WordPress"}
+# Τεχνολογίες που προϋποθέτουν άλλες. Όπως στο LeadCatalog, ένα site σε
+# Next.js ή Nuxt δεν μετράει και ως React ή Vue.
+TECH_IMPLIES = {"WooCommerce": "WordPress"}
 
 
 def _literal_prefix(pattern: str) -> str:

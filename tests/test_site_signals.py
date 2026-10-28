@@ -13,7 +13,7 @@ def test_technologies():
     assert s.detect_technologies(woo, {}, []) == ["WooCommerce", "WordPress"]
     # Θέμα με CSS για WooCommerce, χωρίς το plugin.
     assert s.detect_technologies(wp + '<link href="/theme/woocommerce.css">', {}, []) == ["WordPress"]
-    assert s.detect_technologies('<script src="/_next/static/chunks/main.js">', {}, []) == ["Next.js", "React"]
+    assert s.detect_technologies('<script src="/_next/static/chunks/main.js">', {}, []) == ["Next.js"]
     assert s.detect_technologies("", {"X-Wix-Request-Id": "1"}, []) == ["Wix"]
     assert s.detect_technologies("", {}, ["ocsessid"]) == ["OpenCart"]
     assert s.detect_technologies("<html><body>Hello</body></html>", {}, []) == []
@@ -63,3 +63,9 @@ def test_socials():
 def test_contact_page():
     links = ["https://example.gr/about", "https://www.example.gr/epikoinonia/", "https://other.gr/contact"]
     assert s.find_contact_page(links, "example.gr") == "https://www.example.gr/epikoinonia/"
+
+
+def test_legacy_frameworks():
+    assert "Angular" in s.detect_technologies('<html ng-app="booking">', {}, [])
+    assert "Angular" in s.detect_technologies('<script src="/js/angular.min.js"></script>', {}, [])
+    assert "Vue" in s.detect_technologies('<div id="app" data-v-app>', {}, [])
