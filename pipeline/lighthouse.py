@@ -66,6 +66,10 @@ def parse(data: dict) -> dict:
     return {**scores, "error": error}
 
 
+# Το πρώτο μήνυμα 429 τυπώνεται, για να φαίνεται ποιο όριο ξεπεράστηκε.
+_logged_429: list[bool] = []
+
+
 class Pacer:
     """Μοιράζει τα αιτήματα ομοιόμορφα στον χρόνο, μαζί με τις επαναλήψεις."""
 
@@ -99,6 +103,9 @@ async def check(client: httpx.AsyncClient, key: str, website: str, pacer: Pacer)
         if response.status_code == 429:
             if "per day" in response.text.lower() or "perday" in response.text.lower():
                 raise QuotaExceeded
+            if not _logged_429:
+                _logged_429.append(True)
+                print(f"  429 από τη Google: {response.text[:600]}", flush=True)
             await asyncio.sleep(30 * (attempt + 1))
             continue
         if response.status_code >= 500 and attempt < 2:
