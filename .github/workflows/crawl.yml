@@ -6,6 +6,10 @@ on:
       sample:
         description: "Δείγμα N sites για δοκιμή (κενό = όσα δεν ελέγχθηκαν τις τελευταίες 30 μέρες)"
         required: false
+      recheck_days:
+        description: "Ξαναελέγχει sites που ελέγχθηκαν πριν από τόσες μέρες (0 = όλα)"
+        required: false
+        default: "30"
       save:
         description: "Αποθήκευση στη βάση"
         type: boolean
@@ -35,6 +39,7 @@ jobs:
       - name: Crawl websites
         run: |
           args="--shard ${{ matrix.shard }}/4 --max-minutes 320"
+          args="$args --recheck-days ${{ inputs.recheck_days || 30 }}"
           if [ -n "${{ inputs.sample }}" ]; then args="$args --sample ${{ inputs.sample }}"; fi
           if [ "${{ inputs.save }}" != "true" ]; then args="$args --no-save"; fi
           uv run python -W ignore pipeline/crawl_sites.py $args

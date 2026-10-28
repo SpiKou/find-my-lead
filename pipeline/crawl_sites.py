@@ -283,7 +283,9 @@ async def crawl(
     return list(results.values())
 
 
-def websites_to_check(conn: psycopg.Connection, sample: int | None, shard: tuple[int, int]) -> list[str]:
+def websites_to_check(
+    conn: psycopg.Connection, sample: int | None, shard: tuple[int, int], recheck_days: int = RECHECK_DAYS
+) -> list[str]:
     conn.execute(site_checks.CREATE)
     index, count = shard
     if sample:
@@ -300,7 +302,7 @@ def websites_to_check(conn: psycopg.Connection, sample: int | None, shard: tuple
             WHERE b.website IS NOT NULL
               AND (c.checked_at IS NULL OR c.checked_at < now() - make_interval(days => %s))
             """,
-            [RECHECK_DAYS],
+            [recheck_days],
         ).fetchall()
     # Κάθε job του workflow παίρνει το δικό του κομμάτι των sites.
     return [w for (w,) in rows if int(hashlib.md5(w.encode()).hexdigest(), 16) % count == index]
@@ -361,6 +363,10 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=CONCURRENCY)
     parser.add_argument("--shard", default="0/1", help="κομμάτι i/N για παράλληλα jobs (π.χ. 2/4)")
     parser.add_argument("--max-minutes", type=float, help="μετά από τόσα λεπτά δεν ξεκινά νέα sites")
+    parser.add_argument(
+        "--recheck-days", type=int, default=RECHECK_DAYS,
+        help="ξαναελέγχει sites που ελέγχθηκαν πριν από τόσες μέρες (0 = όλα)",
+    )
     args = parser.parse_args()
 
     url = os.environ.get("DATABASE_URL")
@@ -369,7 +375,7 @@ def main() -> None:
 
     with psycopg.connect(url, autocommit=True) as conn:
         index, count = map(int, args.shard.split("/"))
-        websites = websites_to_check(conn, args.sample, (index, count))
+        websites = websites_to_check(conn, args.sample, (index, count), args.recheck_days)
     print(f"{len(websites):,} sites για έλεγχο")
 
     def save_batch(batch: list[Check]) -> None:
