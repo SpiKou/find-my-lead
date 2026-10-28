@@ -73,17 +73,34 @@ TECH_RULES: dict[str, dict[str, list[str]]] = {
 # Τεχνολογίες που προϋποθέτουν άλλες (όπως στο Wappalyzer).
 TECH_IMPLIES = {"Next.js": "React", "Nuxt": "Vue", "WooCommerce": "WordPress"}
 
+
+def _literal_prefix(pattern: str) -> str:
+    """Το σταθερό κείμενο με το οποίο ξεκινά ένα μοτίβο (π.χ. "/wp-content/")."""
+    text = pattern.lower().removeprefix(r"\s").replace(r"\.", ".").replace(r"\?", "?")
+    prefix = ""
+    for ch in text:
+        if ch in "()[]*+{}|\\^$" or (ch == "?" and prefix and not prefix.endswith(".php")):
+            break
+        prefix += ch
+    return prefix
+
+
+# Για κάθε μοτίβο κρατάμε το σταθερό του πρόθεμα: το regex τρέχει μόνο αν το
+# πρόθεμα υπάρχει στη σελίδα, που είναι πολύ πιο φθηνός έλεγχος.
 _TECH_PATTERNS = {
-    tech: {kind: [re.compile(p, re.I) for p in patterns] for kind, patterns in rules.items()}
+    tech: {kind: [(_literal_prefix(p), re.compile(p.lower())) for p in patterns] for kind, patterns in rules.items()}
     for tech, rules in TECH_RULES.items()
 }
+
+
+def _matches(rules: list[tuple[str, re.Pattern]], text: str) -> bool:
+    return any((not prefix or prefix in text) and pattern.search(text) for prefix, pattern in rules)
 
 ESHOP_PLATFORMS = {"WooCommerce", "Shopify", "OpenCart", "PrestaShop", "Magento"}
 _ESHOP_MARKERS = re.compile(
     r"add[-_ ]to[-_ ]cart|προσθήκη στο καλάθι|"
     r"\"@type\"\s*:\s*\"product\"|og:type\"\s+content=\"product|"
     r"wix-ecommerce|ecwid|cs-cart|shopflix",
-    re.I,
 )
 
 # Σελίδες «προς πώληση», προεπιλεγμένες σελίδες server, ανεσταλμένοι λογαριασμοί.
@@ -99,12 +116,13 @@ _PLACEHOLDER = re.compile(
     r"account (has been )?suspended|this account has been suspended|"
     r"default web site page|web hosting by plesk|<title>\s*cpanel|"
     r"future home of something quite cool|website is under construction",
-    re.I,
 )
 
 _HREF = re.compile(r"""href\s*=\s*["']([^"'#\s]+)""", re.I)
 _MAILTO = re.compile(r"""mailto:([^"'?\s>]+)""", re.I)
-_EMAIL_TEXT = re.compile(r"[a-z0-9._%+\-]+@[a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.[a-z]{2,}", re.I)
+_EMAIL_TEXT = re.compile(r"[a-z0-9._%+\-]{1,64}@[a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.[a-z]{2,}")
+# Πόσα "@" της σελίδας εξετάζονται το πολύ για emails.
+MAX_AT_SIGNS = 500
 _EMAIL_JUNK = re.compile(
     r"\.(png|jpe?g|gif|webp|svg|css|js)$|"
     r"@(example|domain|email|sentry|wixpress|sentry-next|paradeigma|mydomain|yourdomain|"
@@ -125,12 +143,15 @@ _CONTACT_LINK = re.compile(r"contact|epikoinon|επικοινων|kontakt", re.I
 
 
 def detect_technologies(html: str, headers: dict[str, str], cookies: list[str]) -> list[str]:
-    header_lines = [f"{k.lower()}: {v}" for k, v in headers.items()]
+    lower = html.lower()
+    header_lines = [f"{k}: {v}".lower() for k, v in headers.items()]
     found = set()
     for tech, kinds in _TECH_PATTERNS.items():
-        if any(p.search(html) for p in kinds.get("html", [])) or any(
-            p.search(line) for p in kinds.get("headers", []) for line in header_lines
-        ) or any(p.search(c) for p in kinds.get("cookies", []) for c in cookies):
+        if (
+            _matches(kinds.get("html", []), lower)
+            or any(_matches(kinds.get("headers", []), line) for line in header_lines)
+            or any(_matches(kinds.get("cookies", []), c.lower()) for c in cookies)
+        ):
             found.add(tech)
     for tech, implied in TECH_IMPLIES.items():
         if tech in found:
@@ -139,16 +160,25 @@ def detect_technologies(html: str, headers: dict[str, str], cookies: list[str]) 
 
 
 def detect_eshop(html: str, technologies: list[str]) -> bool:
-    return bool(ESHOP_PLATFORMS.intersection(technologies)) or bool(_ESHOP_MARKERS.search(html))
+    return bool(ESHOP_PLATFORMS.intersection(technologies)) or bool(_ESHOP_MARKERS.search(html.lower()))
 
 
 def is_placeholder(html: str, final_host: str) -> bool:
     domain = n._tld(final_host).top_domain_under_public_suffix
-    return domain in PARKED_HOSTS or bool(_PLACEHOLDER.search(html[:20000]))
+    return domain in PARKED_HOSTS or bool(_PLACEHOLDER.search(html[:20000].lower()))
 
 
 def extract_emails(html: str) -> list[str]:
-    raw = _MAILTO.findall(html) + _EMAIL_TEXT.findall(html)
+    # Το regex τρέχει μόνο γύρω από κάθε "@" και όχι σε όλη τη σελίδα.
+    lower = html.lower()
+    raw = _MAILTO.findall(html)
+    start = 0
+    for _ in range(MAX_AT_SIGNS):
+        at = lower.find("@", start)
+        if at < 0:
+            break
+        raw += _EMAIL_TEXT.findall(lower, max(0, at - 64), at + 256)
+        start = at + 1
     emails = set()
     for value in raw:
         email = n.normalize_email(value.split("?")[0])
@@ -197,3 +227,21 @@ def find_contact_page(links: list[str], site_host: str) -> str | None:
         if host == site_host and _CONTACT_LINK.search(parts.path):
             return link
     return None
+
+
+def analyze(html: str, headers: dict[str, str], cookies: list[str], final_url: str, final_host: str) -> dict:
+    """Όλη η ανάλυση μιας σελίδας μαζί, για να τρέχει σε ξεχωριστή διεργασία."""
+    links = extract_links(html, final_url)
+    technologies = detect_technologies(html, headers, cookies)
+    return {
+        "placeholder": is_placeholder(html, final_host),
+        "emails": extract_emails(html),
+        "socials": extract_socials(links),
+        "contact_page": find_contact_page(links, final_host),
+        "technologies": technologies,
+        "eshop": detect_eshop(html, technologies),
+    }
+
+
+def analyze_contact(html: str, url: str) -> tuple[list[str], list[str]]:
+    return extract_emails(html), extract_socials(extract_links(html, url))
