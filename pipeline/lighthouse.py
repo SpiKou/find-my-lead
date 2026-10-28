@@ -180,18 +180,34 @@ def apply(conn: psycopg.Connection, table: str = "businesses") -> int:
     return cursor.rowcount
 
 
+def report(conn: psycopg.Connection) -> None:
+    conn.execute(CREATE)
+    print("Σφάλματα:", conn.execute(
+        "SELECT coalesce(error, 'ok'), count(*) FROM lighthouse_checks GROUP BY 1 ORDER BY 2 DESC"
+    ).fetchall())
+    print("Επιχειρήσεις:", conn.execute(
+        "SELECT count(*) FILTER (WHERE lighthouse_performance IS NOT NULL),"
+        " count(*) FILTER (WHERE has_technical_weaknesses), count(*) FILTER (WHERE has_low_seo)"
+        " FROM businesses"
+    ).fetchone())
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=24000, help="πόσα sites το πολύ (0 = όλα)")
     parser.add_argument("--recheck-days", type=int, default=RECHECK_DAYS)
     parser.add_argument("--max-minutes", type=float, help="μετά από τόσα λεπτά δεν ξεκινά νέα sites")
+    parser.add_argument("--report", action="store_true", help="μόνο σύνοψη των ελέγχων που έχουν γίνει")
     args = parser.parse_args()
 
     url, key = os.environ.get("DATABASE_URL"), os.environ.get("PAGESPEED_API_KEY")
-    if not url or not key:
+    if not url or (not key and not args.report):
         sys.exit("Λείπει το DATABASE_URL ή το PAGESPEED_API_KEY")
 
     with psycopg.connect(url, autocommit=True) as conn:
+        if args.report:
+            report(conn)
+            return
         websites = websites_to_check(conn, args.limit, args.recheck_days)
     print(f"{len(websites):,} sites για Lighthouse")
 

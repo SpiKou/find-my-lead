@@ -13,6 +13,10 @@ on:
         description: "Ξαναελέγχει sites που ελέγχθηκαν πριν από τόσες μέρες"
         required: false
         default: "90"
+      report:
+        description: "Μόνο σύνοψη των αποτελεσμάτων, χωρίς έλεγχο"
+        type: boolean
+        default: false
 
 jobs:
   lighthouse:
@@ -38,3 +42,4 @@ jobs:
           --limit ${{ inputs.limit || 24000 }}
           --recheck-days ${{ inputs.recheck_days || 90 }}
           --max-minutes 225
+          ${{ inputs.report && '--report' || '' }}
