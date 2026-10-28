@@ -74,6 +74,12 @@ TECH_RULES: dict[str, dict[str, list[str]]] = {
 # Τεχνολογίες που προϋποθέτουν άλλες. Όπως στο LeadCatalog, ένα site σε
 # Next.js ή Nuxt δεν μετράει και ως React ή Vue.
 TECH_IMPLIES = {"WooCommerce": "WordPress"}
+# Το Wix και το WordPress φορτώνουν React/Vue εσωτερικά· όπως στο LeadCatalog,
+# μετράνε μόνο ως η πλατφόρμα τους.
+TECH_HIDDEN_BY = {
+    "React": {"Wix", "WordPress", "Next.js"},
+    "Vue": {"WordPress", "Nuxt"},
+}
 
 
 def _literal_prefix(pattern: str) -> str:
@@ -158,6 +164,9 @@ def detect_technologies(html: str, headers: dict[str, str], cookies: list[str]) 
     for tech, implied in TECH_IMPLIES.items():
         if tech in found:
             found.add(implied)
+    for tech, platforms in TECH_HIDDEN_BY.items():
+        if platforms & found:
+            found.discard(tech)
     return sorted(found)
 
 

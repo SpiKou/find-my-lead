@@ -69,3 +69,11 @@ def test_legacy_frameworks():
     assert "Angular" in s.detect_technologies('<html ng-app="booking">', {}, [])
     assert "Angular" in s.detect_technologies('<script src="/js/angular.min.js"></script>', {}, [])
     assert "Vue" in s.detect_technologies('<div id="app" data-v-app>', {}, [])
+
+
+def test_platform_internals():
+    wix = '<script src="https://static.parastorage.com/react-dom.production.min.js">'
+    assert s.detect_technologies(wix, {}, []) == ["Wix"]
+    wp = '<link href="/wp-content/x.css"><div data-v-app>'
+    assert s.detect_technologies(wp, {}, []) == ["WordPress"]
+    assert s.detect_technologies('<div data-reactroot="">', {}, []) == ["React"]
