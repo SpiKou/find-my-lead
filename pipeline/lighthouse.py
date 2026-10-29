@@ -5,8 +5,8 @@ SEO, σε κινητό) στον πίνακα lighthouse_checks και τα πε
 Όπως στο LeadCatalog, «τεχνικές αδυναμίες» σημαίνει Performance, Accessibility
 ή Best Practices κάτω από 60 και «χαμηλό SEO» σημαίνει SEO κάτω από 60.
 
-Το δωρεάν όριο της Google είναι 25.000 έλεγχοι την ημέρα και 400 ανά 100
-δευτερόλεπτα, οπότε ο πλήρης έλεγχος γίνεται σε δόσεις (--limit).
+Το δωρεάν όριο της Google είναι 30 έλεγχοι το λεπτό και 25.000 την ημέρα,
+οπότε ο πλήρης έλεγχος γίνεται σε δόσεις (--limit, --max-minutes).
 
 Χρήση:
     DATABASE_URL=... PAGESPEED_API_KEY=... uv run python pipeline/lighthouse.py --limit 24000
@@ -17,7 +17,6 @@ import asyncio
 import os
 import sys
 import time
-import zlib
 from datetime import datetime, timezone
 
 import httpx
@@ -31,11 +30,10 @@ CATEGORIES = {
     "seo": "seo",
 }
 THRESHOLD = 60
-# 400 αιτήματα ανά 100 δευτερόλεπτα· κρατάμε περιθώριο.
-REQUESTS_PER_SECOND = 3.5
-# Τα αιτήματα παίρνουν 20–60 δευτερόλεπτα, οπότε χρειάζονται πολλά ταυτόχρονα.
-CONCURRENCY = 250
-QUOTA_USERS = 50
+# 30 αιτήματα το λεπτό· κρατάμε περιθώριο για τις επαναλήψεις.
+REQUESTS_PER_SECOND = 0.45
+# Τα αιτήματα παίρνουν 20–60 δευτερόλεπτα, οπότε χρειάζονται αρκετά ταυτόχρονα.
+CONCURRENCY = 40
 MAX_ATTEMPTS = 6
 SAVE_EVERY = 500
 RECHECK_DAYS = 90
@@ -91,9 +89,6 @@ async def check(client: httpx.AsyncClient, key: str, website: str, pacer: Pacer)
     params += [("category", c) for c in CATEGORIES]
     # Μόνο τα scores, όχι όλη την αναφορά (μερικά MB ανά site).
     params.append(("fields", "lighthouseResult/categories/*/score,lighthouseResult/runtimeError"))
-    # Το όριο «ανά χρήστη» (60 ανά 100 δευτερόλεπτα) μετράει χωριστά για κάθε
-    # quotaUser· έτσι ισχύει μόνο το όριο του project (400 ανά 100 δευτερόλεπτα).
-    params.append(("quotaUser", f"fml-{zlib.crc32(website.encode()) % QUOTA_USERS}"))
     for attempt in range(MAX_ATTEMPTS):
         await pacer.wait()
         try:

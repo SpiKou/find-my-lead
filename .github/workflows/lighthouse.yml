@@ -1,8 +1,11 @@
 name: Lighthouse
 
-# Μία δόση την ημέρα: το δωρεάν όριο της Google είναι 25.000 έλεγχοι ανά ημέρα.
-# Τρέχει μόνο όταν το ζητήσουμε, όπως και το crawl.
+# Το δωρεάν όριο της Google είναι 30 έλεγχοι το λεπτό, δηλαδή περίπου 10.000
+# σε ένα job των 6 ωρών. Το schedule τρέχει τις δόσεις μέχρι να ελεγχθούν όλα
+# τα sites και μετά αφαιρείται· από εκεί και πέρα τρέχει μόνο όταν το ζητήσουμε.
 on:
+  schedule:
+    - cron: "0 */6 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -18,10 +21,12 @@ on:
         type: boolean
         default: false
 
+concurrency: lighthouse
+
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 355
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
@@ -41,5 +46,5 @@ jobs:
           uv run python pipeline/lighthouse.py
           --limit ${{ inputs.limit || 24000 }}
           --recheck-days ${{ inputs.recheck_days || 90 }}
-          --max-minutes 225
+          --max-minutes 340
           ${{ inputs.report && '--report' || '' }}
