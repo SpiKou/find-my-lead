@@ -36,6 +36,29 @@ function socialUrl(platform: string, socials: string[]) {
   return socials.find((url) => hosts.some((host) => domain(url).endsWith(host)));
 }
 
+// Κάτω από το 60 ένα score μετράει ως αδυναμία, όπως και στα φίλτρα.
+const LOW_SCORE = 60;
+
+function Scores({ row }: { row: BusinessRow }) {
+  const scores = [
+    { label: "Perf", title: "Performance", value: row.lighthouse_performance },
+    { label: "Access", title: "Accessibility", value: row.lighthouse_accessibility },
+    { label: "BP", title: "Best Practices", value: row.lighthouse_best_practices },
+    { label: "SEO", title: "SEO", value: row.lighthouse_seo },
+  ].filter((score) => score.value !== null);
+  if (scores.length === 0) return null;
+  return (
+    <p className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-xs text-muted">
+      {scores.map(({ label, title, value }) => (
+        <span key={label} title={`Lighthouse ${title}: ${value}/100`}>
+          {label}{" "}
+          <span className={`font-semibold ${value! < LOW_SCORE ? "text-red-600" : "text-ink-soft"}`}>{value}</span>
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function ContactChip({ href, title, children }: { href?: string; title?: string; children: React.ReactNode }) {
   const className =
     "inline-flex h-7 items-center gap-1.5 rounded-md border border-line bg-canvas/60 px-2 text-xs font-medium text-ink-soft hover:border-ink-soft";
@@ -81,6 +104,7 @@ export function BusinessRowCard({ row }: { row: BusinessRow }) {
               <span className="rounded bg-brand-soft px-1.5 py-0.5 font-medium text-brand">E-shop</span>
             )}
           </p>
+          <Scores row={row} />
         </div>
       </div>
 

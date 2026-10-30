@@ -26,6 +26,10 @@ export type BusinessRow = {
   socials: string[];
   social_platforms: string[];
   eshop: boolean | null;
+  lighthouse_performance: number | null;
+  lighthouse_accessibility: number | null;
+  lighthouse_best_practices: number | null;
+  lighthouse_seo: number | null;
 };
 
 export type FilterOptions = {
@@ -103,7 +107,8 @@ function requireDb() {
 const RESULT_COLUMNS = `
   id, name, website, website_status, website_reason, business_type_name, industry_name,
   localities[1] AS city, administrative_areas[1] AS region, locations_count,
-  emails, phones, socials, social_platforms, eshop`;
+  emails, phones, socials, social_platforms, eshop, lighthouse_performance,
+  lighthouse_accessibility, lighthouse_best_practices, lighthouse_seo`;
 
 export async function searchBusinesses(filters: Filters, offset = 0) {
   const db = requireDb();
